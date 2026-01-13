@@ -6,7 +6,8 @@ import {
   MessageSquare, 
   LogOut,
   HelpCircle,
-  User as UserIcon
+  User as UserIcon,
+  Shield // Added Shield icon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
@@ -54,6 +55,14 @@ export async function Sidebar() {
               <Button variant="ghost" className="w-full justify-start gap-2">
                 <CalendarDays size={20} />
                 Planung
+              </Button>
+            </Link>
+          )}
+          {user.role === 'admin' && (
+            <Link href="/admin/users">
+              <Button variant="ghost" className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50">
+                <Shield size={20} />
+                Admin
               </Button>
             </Link>
           )}

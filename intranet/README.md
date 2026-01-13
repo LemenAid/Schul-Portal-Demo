@@ -4,19 +4,17 @@ Ein modernes Firmen-Intranet / LMS-Prototyp, erstellt mit Vibe Coding.
 
 ## Features
 
-*   **Rollensystem**: Login als Student, Lehrer oder Administrator (via Dev-Login).
-*   **Dashboard**: Rollenspezifische Widgets (News, Kurse, offene Anfragen).
-*   **Zeiterfassung**: Einfaches Ein- und Ausstempeln mit Historie & Arbeitszeit-Statistik.
-*   **Kursplan**: Übersicht über anstehende Module und Prüfungen.
-*   **Schwarzes Brett**: "Suche & Biete" Marktplatz.
-*   **Support-System (Anfragen)**:
-    *   Schüler können Fragen an Lehrer oder Admins stellen.
-    *   Personal kann Anfragen beantworten.
-    *   Historie der gestellten und beantworteten Fragen.
-*   **Profil-Seiten**:
-    *   **Studenten**: Notenübersicht und Anwesenheits-KPIs.
-    *   **Lehrer**: Übersicht der Lehrkompetenzen (aktive/inaktive Module).
-    *   **Admins**: Abteilungsinfo und Arbeitszeit-Auswertung.
+*   **Erweitertes Rollensystem**: Login als Admin, Staff, Teacher oder Student.
+*   **LMS-Features (Learning Management)**:
+    *   **Umschulungs-Struktur**: Abbildung kompletter Tracks (z.B. "Fachinformatiker Winter 2025") mit Kursen und Themen.
+    *   **Intelligente Planung**: Staff-Mitglieder weisen Lehrer basierend auf Skills und Verfügbarkeit zu.
+    *   **Raumplanung**: Zuweisung von Räumen und Vermeidung von Doppelbelegungen.
+    *   **Prüfungsverwaltung**: Lehrer tragen Noten ein, Schüler sehen Ergebnisse und Durchschnitt.
+*   **Intranet-Features**:
+    *   **Zeiterfassung**: Stempeluhr (On-Site/Remote) und Monatsbericht-Export.
+    *   **Schwarzes Brett**: "Suche & Biete" Marktplatz.
+    *   **Support-System (Anfragen)**: Ticket-System zwischen Schülern und Personal.
+*   **Dashboard**: Rollenspezifische Widgets und Funktionen.
 
 ## Tech Stack
 
@@ -37,7 +35,7 @@ Ein modernes Firmen-Intranet / LMS-Prototyp, erstellt mit Vibe Coding.
     npx prisma db push
     ```
 
-3.  (Optional) Datenbank mit Testdaten füllen:
+3.  Datenbank mit Testdaten füllen (inkl. kompletter Umschulung Winter 2025):
     ```bash
     npx prisma db seed
     ```
@@ -54,4 +52,5 @@ Das Portal ist dann unter `http://localhost:3000` erreichbar.
 *   `/app`: Next.js Pages & Layouts (Dashboard, Profil, Inquiries, etc.)
 *   `/components`: UI Komponenten (Sidebar, Widgets, shadcn/ui)
 *   `/lib`: Server Actions (Business Logic) & Auth
-*   `/prisma`: Datenbankschema (Models für User, Grade, Inquiry, etc.)
+*   `/prisma`: Datenbankschema (EducationTrack, Course, User, Grade, etc.)
+

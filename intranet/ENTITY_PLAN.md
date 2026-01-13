@@ -6,6 +6,8 @@ This document outlines the database schema for the Intranet application, detaili
 
 ```mermaid
 erDiagram
+    EducationTrack ||--o{ Course : "contains"
+    EducationTrack ||--o{ User : "has students"
     User ||--o{ TimeEntry : "logs time"
     User ||--o{ BulletinPost : "creates"
     User ||--o{ Inquiry : "submits"
@@ -14,14 +16,25 @@ erDiagram
     User }|--|{ Course : "attends (Student)"
     User }|--|{ Course : "teaches (Teacher)"
     Course ||--o{ Exam : "includes"
-    
+    Course ||--o{ CourseTopic : "has topics"
+    Room ||--o{ CourseEvent : "hosts"
+
     User {
         String id PK
         String name
         String email
-        String role "admin, student, staff"
+        String role "admin, student, staff, teacher"
         String department "nullable"
         String measureNumber "nullable"
+        String educationTrackId FK "nullable"
+        DateTime createdAt
+    }
+
+    EducationTrack {
+        String id PK
+        String title
+        DateTime startDate
+        DateTime endDate
         DateTime createdAt
     }
 
@@ -31,7 +44,24 @@ erDiagram
         String description "nullable"
         DateTime startDate
         DateTime endDate
+        String educationTrackId FK "nullable"
+        Int maxStudents
         DateTime createdAt
+    }
+
+    CourseTopic {
+        String id PK
+        String title
+        Int durationUnits
+        DateTime startDate
+        DateTime endDate
+        String courseId FK
+    }
+
+    Room {
+        String id PK
+        String name
+        Int capacity
     }
 
     TimeEntry {
@@ -59,7 +89,7 @@ erDiagram
         String description "nullable"
         DateTime startTime
         DateTime endTime
-        String location "nullable"
+        String roomId FK "nullable"
         String instructor "nullable"
         DateTime createdAt
     }
@@ -100,6 +130,7 @@ erDiagram
     Grade {
         String id PK
         String userId FK
+        String examId FK "nullable"
         String subject
         Float value
         DateTime date
@@ -118,94 +149,60 @@ erDiagram
 ### 1. User
 **Description**: Represents all actors in the system (Students, Teachers, Administrators, Staff).
 **Attributes**:
-*   `role`: Defines permissions (`admin`, `student`, `staff`, `user`).
+*   `role`: Defines permissions (`admin`, `staff`, `teacher`, `student`).
 *   `department`: For Admins/Staff (e.g., "IT-Support").
 *   `measureNumber`: Specific ID for students (e.g., "123/456/2024").
+*   `educationTrackId`: Links students to their specific cohort/year.
 **Capabilities**:
-*   **Admin**: Full CRUD (Create, Read, Update, Delete) on Users.
-*   **User (Self)**: Read own profile, potentially update limited fields (password/avatar - implied).
+*   **Admin**: Full CRUD. Manage Users, assign roles, view logs.
+*   **Staff**: Plan courses, assign teachers/students, manage schedules.
+*   **Teacher**: View schedule, grade exams.
+*   **Student**: View schedule, grades, clock in/out.
 
-### 2. Course
-**Description**: Academic or training courses that students attend and teachers lead.
+### 2. EducationTrack
+**Description**: Represents a complete retraining program (e.g., "Fachinformatiker Winter 2025").
 **Attributes**:
-*   `startDate`, `endDate`: Duration of the course.
-*   `students`: Relation to Users (Students).
-*   `teachers`: Relation to Users (Teachers).
+*   `startDate`, `endDate`: Duration of the entire program.
 **Capabilities**:
-*   **Admin/Staff**: Create and manage courses. Assign users.
-*   **Teacher**: Read assigned courses, manage course content (implied).
-*   **Student**: Read enrolled courses.
+*   **Staff**: Create and manage tracks.
 
-### 3. TimeEntry
+### 3. Course (Module)
+**Description**: A specific module within an EducationTrack (e.g., "Einführung Programmierung").
+**Attributes**:
+*   `maxStudents`: Limit for participants (default 25).
+*   `topics`: Breakdown of content within the course.
+**Capabilities**:
+*   **Staff**: Create, assign teachers (with skill check) and students (max 25).
+
+### 4. CourseTopic
+**Description**: Granular topics within a course (e.g., "Java Basics" inside "Programmierung").
+**Attributes**:
+*   `durationUnits`: Number of teaching units (UE).
+
+### 5. Room
+**Description**: Physical or virtual spaces for instruction.
+**Attributes**:
+*   `capacity`: Max people.
+*   `name`: e.g. "Raum 101" or "Remote".
+
+### 6. TimeEntry
 **Description**: Records of time spent working or studying (Time Tracking).
 **Attributes**:
-*   `clockIn`, `clockOut`: timestamps.
 *   `location`: "ON_SITE" or "REMOTE".
 **Capabilities**:
-*   **Student/Staff**: Create (Clock In/Out). Read own history.
-*   **Admin**: Read all entries for reporting.
+*   **Student/Staff**: Create (Clock In/Out).
+*   **All**: Generate monthly log export.
 
-### 4. Announcement
-**Description**: Global news or updates visible to all users.
+### 7. Exam & Grade
+**Description**: Assessment system.
 **Attributes**:
-*   `published`: Boolean flag to control visibility.
-*   `author`: Name of the creator (currently a simple string).
+*   `Exam`: Linked to a Course.
+*   `Grade`: Linked to User and Exam.
 **Capabilities**:
-*   **Admin/Staff**: Create, Update, Delete.
-*   **All Users**: Read published announcements.
+*   **Teacher**: Grade students via table view.
+*   **Student**: View own grades and average.
 
-### 5. CourseEvent
-**Description**: Calendar events (e.g., specific lectures, workshops) independent of specific Course relations in the schema (currently standalone).
-**Attributes**:
-*   `startTime`, `endTime`: Scheduling details.
-*   `instructor`: Name of the person leading the event.
+### 8. TeacherSkill
+**Description**: Tags for teacher qualifications (e.g., "Netzwerk", "BWL").
 **Capabilities**:
-*   **Admin/Staff**: Manage events.
-*   **All Users**: Read events (Calendar view).
-
-### 6. BulletinPost
-**Description**: A "Blackboard" or "Classifieds" system for users to offer or search for items/services.
-**Attributes**:
-*   `type`: "OFFER" or "SEARCH".
-*   `contactInfo`: How to reach the poster.
-**Capabilities**:
-*   **All Users**: Create posts, Read all posts.
-*   **Admin**: Delete inappropriate posts.
-
-### 7. Exam
-**Description**: Scheduled examinations linked to courses.
-**Attributes**:
-*   `content`: Topics covered.
-*   `duration`: Length in minutes.
-**Capabilities**:
-*   **Teacher/Staff**: Schedule (Create) and Manage exams.
-*   **Student**: Read upcoming exams for their courses.
-
-### 8. Inquiry
-**Description**: A ticketing system for users to ask questions to administration or teachers.
-**Attributes**:
-*   `category`: Target audience ("ADMIN", "TEACHER").
-*   `status`: Workflow state ("OPEN", "ANSWERED").
-*   `answer`: Response text.
-**Capabilities**:
-*   **Student**: Create inquiry. Read own inquiries.
-*   **Admin/Staff**: Read incoming inquiries, Update (Answer).
-
-### 9. Grade
-**Description**: Academic performance records for students.
-**Attributes**:
-*   `value`: The numeric grade (e.g., 1.0 - 6.0).
-*   `subject`: The topic/course name.
-**Capabilities**:
-*   **Teacher**: Create grades for students.
-*   **Student**: Read own grades.
-*   **Admin**: Full access.
-
-### 10. TeacherSkill
-**Description**: Skills or subjects a teacher is qualified to teach.
-**Attributes**:
-*   `subject`: Name of the skill.
-*   `isActive`: Availability status.
-**Capabilities**:
-*   **Teacher**: Manage own skills.
-*   **Admin**: Manage teacher profiles.
+*   **Staff**: Use these tags to filter suitable teachers for course assignment.

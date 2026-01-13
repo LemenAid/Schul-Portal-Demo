@@ -14,13 +14,18 @@ datasource db {
 // Modelle für das Intranet
 
 model User {
-  id            String   @id @default(cuid())
+  id            String  @id @default(cuid())
   name          String
-  email         String   @unique
-  role          String   @default("user") // "admin", "student", "staff"
+  email         String  @unique
+  role          String  @default("user") // "admin", "student", "staff", "teacher"
   department    String? // Für Admins/Staff: z.B. "IT-Support", "Verwaltung"
   measureNumber String? // Format: 123/456/2024 (Nur für Studenten)
-  createdAt     DateTime @default(now())
+
+  // Relation zur Umschulung (nur für Studenten relevant)
+  educationTrackId String?
+  educationTrack   EducationTrack? @relation(fields: [educationTrackId], references: [id])
+
+  createdAt DateTime @default(now())
 
   // Relationen
   timeEntries   TimeEntry[]
@@ -34,6 +39,19 @@ model User {
   coursesAsTeacher Course[] @relation("TeacherCourses")
 }
 
+// Umschulung / Jahrgang (z.B. "Fachinformatiker Winter 2025")
+model EducationTrack {
+  id        String   @id @default(cuid())
+  title     String
+  startDate DateTime
+  endDate   DateTime
+
+  users   User[] // Schüler in diesem Jahrgang
+  courses Course[] // Kurse, die zu diesem Jahrgang gehören
+
+  createdAt DateTime @default(now())
+}
+
 model Course {
   id          String   @id @default(cuid())
   title       String
@@ -41,10 +59,42 @@ model Course {
   startDate   DateTime
   endDate     DateTime
 
+  // Zugehörigkeit zu einer Umschulung
+  educationTrackId String?
+  educationTrack   EducationTrack? @relation(fields: [educationTrackId], references: [id])
+
+  // Begrenzung
+  maxStudents Int @default(25)
+
   // Relationen
-  students User[] @relation("StudentCourses")
-  teachers User[] @relation("TeacherCourses")
+  students User[]        @relation("StudentCourses")
+  teachers User[]        @relation("TeacherCourses")
   exams    Exam[]
+  topics   CourseTopic[] // Themengebiete innerhalb des Kurses
+
+  createdAt DateTime @default(now())
+}
+
+// Themengebiete innerhalb eines Kurses (aus Kursinhalte.md)
+model CourseTopic {
+  id            String   @id @default(cuid())
+  title         String
+  durationUnits Int // Unterrichtseinheiten (UE)
+  startDate     DateTime
+  endDate       DateTime
+
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model Room {
+  id       String @id @default(cuid())
+  name     String // z.B. "Raum 101", "Remote"
+  capacity Int    @default(30)
+
+  events CourseEvent[]
 
   createdAt DateTime @default(now())
 }
@@ -76,8 +126,12 @@ model CourseEvent {
   description String?
   startTime   DateTime
   endTime     DateTime
-  location    String?
-  instructor  String?
+
+  // Raum-Relation statt simplem String
+  roomId String?
+  room   Room?   @relation(fields: [roomId], references: [id])
+
+  instructor String?
 
   createdAt DateTime @default(now())
 }
@@ -96,15 +150,20 @@ model BulletinPost {
 }
 
 model Exam {
-  id       String   @id @default(cuid())
-  title    String
-  date     DateTime
-  content  String // Was wird abgefragt?
+  id      String   @id @default(cuid())
+  title   String
+  date    DateTime
+  content String // Was wird abgefragt?
+
+  // Location kann hier auch optional ein Room sein, lassen wir erstmal generisch String oder via CourseEvent lösen
   location String
+
   duration Int // Dauer in Minuten
 
   courseId String?
   course   Course? @relation(fields: [courseId], references: [id])
+
+  grades Grade[] // Noten für diese Klausur
 
   createdAt DateTime @default(now())
 }
@@ -126,10 +185,16 @@ model Inquiry {
 
 // Neu für Profil-Features
 model Grade {
-  id      String   @id @default(cuid())
-  userId  String
-  user    User     @relation(fields: [userId], references: [id])
-  subject String // z.B. "Mathematik"
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Verknüpfung zur Prüfung (sauberer als nur String subject)
+  examId String?
+  exam   Exam?   @relation(fields: [examId], references: [id])
+
+  subject String // Fallback oder Fach-Name
   value   Float // z.B. 2.5
   date    DateTime @default(now())
 }
@@ -138,6 +203,6 @@ model TeacherSkill {
   id       String  @id @default(cuid())
   userId   String
   user     User    @relation(fields: [userId], references: [id])
-  subject  String // z.B. "Web Development"
+  subject  String // z.B. "Web Development" (Dient als TAG)
   isActive Boolean @default(true)
 }

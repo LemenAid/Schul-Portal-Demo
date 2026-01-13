@@ -126,6 +126,15 @@ exports.Prisma.UserScalarFieldEnum = {
   role: 'role',
   department: 'department',
   measureNumber: 'measureNumber',
+  educationTrackId: 'educationTrackId',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.EducationTrackScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  startDate: 'startDate',
+  endDate: 'endDate',
   createdAt: 'createdAt'
 };
 
@@ -135,6 +144,25 @@ exports.Prisma.CourseScalarFieldEnum = {
   description: 'description',
   startDate: 'startDate',
   endDate: 'endDate',
+  educationTrackId: 'educationTrackId',
+  maxStudents: 'maxStudents',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.CourseTopicScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  durationUnits: 'durationUnits',
+  startDate: 'startDate',
+  endDate: 'endDate',
+  courseId: 'courseId',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.RoomScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  capacity: 'capacity',
   createdAt: 'createdAt'
 };
 
@@ -163,7 +191,7 @@ exports.Prisma.CourseEventScalarFieldEnum = {
   description: 'description',
   startTime: 'startTime',
   endTime: 'endTime',
-  location: 'location',
+  roomId: 'roomId',
   instructor: 'instructor',
   createdAt: 'createdAt'
 };
@@ -204,6 +232,7 @@ exports.Prisma.InquiryScalarFieldEnum = {
 exports.Prisma.GradeScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
+  examId: 'examId',
   subject: 'subject',
   value: 'value',
   date: 'date'
@@ -229,7 +258,10 @@ exports.Prisma.NullsOrder = {
 
 exports.Prisma.ModelName = {
   User: 'User',
+  EducationTrack: 'EducationTrack',
   Course: 'Course',
+  CourseTopic: 'CourseTopic',
+  Room: 'Room',
   TimeEntry: 'TimeEntry',
   Announcement: 'Announcement',
   CourseEvent: 'CourseEvent',
