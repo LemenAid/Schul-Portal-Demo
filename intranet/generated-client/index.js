@@ -251,7 +251,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "C:\\Users\\marct\\Downloads\\Lemen\\GitHub\\Vibe-Coding-Unterricht\\intranet\\generated-client",
+      "value": "C:\\Users\\CC-Student\\Documents\\GitHub\\Vibe-Coding-Unterricht\\intranet\\generated-client",
       "fromEnvVar": null
     },
     "config": {
@@ -265,7 +265,7 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "C:\\Users\\marct\\Downloads\\Lemen\\GitHub\\Vibe-Coding-Unterricht\\intranet\\prisma\\schema.prisma",
+    "sourceFilePath": "C:\\Users\\CC-Student\\Documents\\GitHub\\Vibe-Coding-Unterricht\\intranet\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
@@ -279,6 +279,7 @@ const config = {
     "db"
   ],
   "activeProvider": "sqlite",
+  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {
