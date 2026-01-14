@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { assignStudentsToTrack } from "@/lib/actions";
+import { assignStudentsToCourse } from "@/lib/actions";
 import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -16,19 +16,20 @@ type Student = {
     id: string;
     name: string;
     email: string;
-    // image?: string | null; // Removed
 };
 
-interface AssignStudentsDialogProps {
-    trackId: string;
-    trackTitle: string;
+interface AssignStudentsToCourseDialogProps {
+    courseId: string;
+    courseTitle: string;
     availableStudents: Student[];
+    currentStudentIds: string[];
 }
 
-export function AssignStudentsDialog({ trackId, trackTitle, availableStudents }: AssignStudentsDialogProps) {
+export function AssignStudentsToCourseDialog({ courseId, courseTitle, availableStudents, currentStudentIds }: AssignStudentsToCourseDialogProps) {
     const [open, setOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+    // Initialize with current students
+    const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>(currentStudentIds);
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
 
@@ -43,8 +44,8 @@ export function AssignStudentsDialog({ trackId, trackTitle, availableStudents }:
             if (isSelected) {
                 return prev.filter(id => id !== studentId);
             } else {
-                if (prev.length >= 25) {
-                    toast.error("Maximal 25 Schüler erlaubt.");
+                 if (prev.length >= 25) {
+                    toast.error("Maximal 25 Schüler pro Kurs erlaubt.");
                     return prev;
                 }
                 return [...prev, studentId];
@@ -54,10 +55,18 @@ export function AssignStudentsDialog({ trackId, trackTitle, availableStudents }:
 
     const handleSave = () => {
         startTransition(async () => {
-            await assignStudentsToTrack(trackId, selectedStudentIds);
-            setOpen(false);
-            setSelectedStudentIds([]);
-            router.refresh();
+            try {
+                await assignStudentsToCourse(courseId, selectedStudentIds);
+                setOpen(false);
+                router.refresh();
+                toast.success("Teilnehmerliste aktualisiert!");
+            } catch (e: unknown) {
+                if (e instanceof Error) {
+                    toast.error(e.message);
+                } else {
+                    toast.error("Fehler beim Speichern der Teilnehmer.");
+                }
+            }
         });
     };
 
@@ -65,14 +74,14 @@ export function AssignStudentsDialog({ trackId, trackTitle, availableStudents }:
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="w-full">
-                    Schüler hinzufügen
+                    Schüler verwalten
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Schüler zuweisen</DialogTitle>
+                    <DialogTitle>Kurs-Teilnehmer verwalten</DialogTitle>
                     <DialogDescription>
-                        Fügen Sie Schüler zum Track &quot;{trackTitle}&quot; hinzu. (Max. 25)
+                        Fügen Sie Schüler zum Kurs &quot;{courseTitle}&quot; hinzu. (Max. 25)
                     </DialogDescription>
                 </DialogHeader>
                 
@@ -92,7 +101,7 @@ export function AssignStudentsDialog({ trackId, trackTitle, availableStudents }:
                             <span>Name</span>
                             <span>{selectedStudentIds.length} / 25 ausgewählt</span>
                         </div>
-                        <ScrollArea className="h-[200px]">
+                        <ScrollArea className="h-[250px]">
                             {filteredStudents.length === 0 ? (
                                 <div className="p-4 text-center text-sm text-muted-foreground">
                                     Keine verfügbaren Schüler gefunden.
@@ -102,18 +111,18 @@ export function AssignStudentsDialog({ trackId, trackTitle, availableStudents }:
                                     {filteredStudents.map((student) => (
                                         <div key={student.id} className="flex items-center space-x-3 p-3 hover:bg-muted/30 transition-colors">
                                             <Checkbox 
-                                                id={`student-${student.id}`} 
+                                                id={`c-student-${student.id}`} 
                                                 checked={selectedStudentIds.includes(student.id)}
                                                 onCheckedChange={() => handleToggleStudent(student.id)}
-                                                disabled={!selectedStudentIds.includes(student.id) && selectedStudentIds.length >= 25}
+                                                 disabled={!selectedStudentIds.includes(student.id) && selectedStudentIds.length >= 25}
                                             />
                                             <div className="grid gap-0.5 leading-none cursor-pointer" onClick={() => {
-                                                if (selectedStudentIds.includes(student.id) || selectedStudentIds.length < 25) {
+                                                  if (selectedStudentIds.includes(student.id) || selectedStudentIds.length < 25) {
                                                     handleToggleStudent(student.id);
                                                 }
                                             }}>
                                                 <Label 
-                                                    htmlFor={`student-${student.id}`}
+                                                    htmlFor={`c-student-${student.id}`}
                                                     className={`font-medium cursor-pointer ${(!selectedStudentIds.includes(student.id) && selectedStudentIds.length >= 25) ? 'opacity-50' : ''}`}
                                                 >
                                                     {student.name}
@@ -132,8 +141,8 @@ export function AssignStudentsDialog({ trackId, trackTitle, availableStudents }:
 
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setOpen(false)}>Abbrechen</Button>
-                    <Button onClick={handleSave} disabled={isPending || selectedStudentIds.length === 0}>
-                        {isPending ? "Speichert..." : "Hinzufügen"}
+                    <Button onClick={handleSave} disabled={isPending}>
+                        {isPending ? "Speichert..." : "Speichern"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

@@ -41,7 +41,6 @@ type Track = {
     // We would need to fetch students if we want to list them "all"
     // Since getEducationTracks might not include students by default, we need to ensure we pass them or fetch them.
     // Let's assume for this "details" view we might need more data.
-    // For now, let's use what we have, or if we need student list, we should pass it.
     // The prompt says "wo man alle schüler sieht die hinzugefügt sind".
     // So we need students.
 };
@@ -50,6 +49,7 @@ type Student = {
     id: string;
     name: string;
     email: string;
+    educationTrack?: { title: string } | null;
 };
 
 interface TrackDetailsDialogProps {
@@ -61,6 +61,12 @@ import { AssignStudentsDialog } from "./assign-students-dialog";
 
 export function TrackDetailsDialog({ track, students, availableStudents }: TrackDetailsDialogProps & { availableStudents: Student[] }) {
   const [open, setOpen] = useState(false);
+  
+  // Filter available students: Only those who HAVE NO track OR are already in THIS track (though they are passed in students prop, this is for the picker)
+  // Actually AssignStudentsDialog usually takes "candidates".
+  // The "availableStudents" passed from page.tsx is now ALL students.
+  // We want to pass to the dialog only those who are NOT in a track.
+  const candidates = availableStudents.filter(s => !s.educationTrack || s.educationTrack.title === track.title); 
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -136,7 +142,7 @@ export function TrackDetailsDialog({ track, students, availableStudents }: Track
                     <AssignStudentsDialog 
                         trackId={track.id} 
                         trackTitle={track.title} 
-                        availableStudents={availableStudents} 
+                        availableStudents={candidates} 
                     />
                </div>
            </div>

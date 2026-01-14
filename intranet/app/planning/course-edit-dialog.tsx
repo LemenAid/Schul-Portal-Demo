@@ -11,11 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TagSelector } from "./tag-selector";
 import { TeacherSelector } from "./teacher-selector";
 import { Trash2, UserPlus, Send, XCircle } from "lucide-react";
-import { updateCourse, deleteCourse, inviteTeacherToCourse, getCourseInvitations } from "@/lib/actions"; // We will implement these actions
+import { updateCourse, deleteCourse, inviteTeacherToCourse, getCourseInvitations, removeStudentFromCourse } from "@/lib/actions"; 
 import { Badge } from "@/components/ui/badge";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type CourseTag = {
     tag: {
@@ -56,12 +59,6 @@ type Track = {
 type Tag = {
     id: string;
     name: string;
-};
-
-type CourseEditDialogProps = {
-    course: Course;
-    tracks: Track[];
-    allTags: Tag[];
 };
 
 import { TeacherSelectionProvider, useTeacherSelection } from "./teacher-context";
@@ -106,17 +103,6 @@ function InvitationList({ courseId }: { courseId: string }) {
 // Wrapper for Submit Logic to handle Invitations vs Direct Assignment
 function ActionButtons({ courseId, assignedTeacherId }: { courseId: string, assignedTeacherId?: string }) {
      const { selectedTeacherId } = useTeacherSelection();
-     // If a teacher is selected in the dropdown that is DIFFERENT from the currently assigned one
-     // We show "Invite" instead of just saving directly, or we handle it in the server action.
-     // But here we want explicit "Invite" button maybe?
-     // Actually, let's keep it simple: "Save Changes" updates everything.
-     // BUT the requirement says: Change "Assign" button to "Invite".
-     
-     // In this dialog, we have a general "Save Changes" button for the whole form.
-     // If we want to support invitation, we might need a specific button or handle it in updateCourse.
-     // However, updateCourse usually does a direct connect.
-     
-     // Let's add a dedicated "Invite Selected Teacher" button if someone is selected but not assigned.
      
      const handleInvite = async (e: React.MouseEvent) => {
          e.preventDefault(); // Prevent form submit
@@ -150,48 +136,41 @@ function ActionButtons({ courseId, assignedTeacherId }: { courseId: string, assi
      return <Button type="submit" className="w-full mt-4">Änderungen speichern</Button>;
 }
 
-export function CourseEditDialog({ course, tracks, allTags }: CourseEditDialogProps) {
+import { AssignStudentsToCourseDialog } from "./assign-course-students-dialog";
+
+type CourseEditDialogProps = {
+    course: Course & { students?: { id: string, name: string, email: string }[] }; 
+    tracks: Track[];
+    allTags: Tag[];
+    availableStudents: { id: string, name: string, email: string }[];
+};
+
+export function CourseEditDialog({ course, tracks, allTags, availableStudents }: CourseEditDialogProps) {
     const [isOpen, setIsOpen] = useState(false);
-    
-    // Extract initial tags from the first assigned teacher (if any) or existing course tags if we had them.
-    // Assuming for now that course.teachers[0] represents the main teacher we want to show.
-    // And assuming we might want to pre-fill tags based on that teacher's skills or course metadata if we had it.
-    // Since we don't store "required tags" on the course directly in the schema shown so far, 
-    // we might just start with an empty tag list OR try to infer from the assigned teacher.
-    
-    // Let's try to infer tags from the assigned teacher to be helpful
     const initialTeacher = course.teachers[0];
-    
-    // Use course tags if available, otherwise fall back to teacher's skill tags
-    let initialTags: { id: string; name: string }[] = [];
-    if (course.tags && course.tags.length > 0) {
-        initialTags = course.tags.map((ct: CourseTag) => ct.tag);
-    } else if (initialTeacher && initialTeacher.teacherSkills) {
-        initialTags = initialTeacher.teacherSkills.map((ts: TeacherSkill) => ts.tag);
-    }
+
+    const handleSubmit = async (formData: FormData) => {
+         await updateCourse(formData);
+         setIsOpen(false);
+         toast.success("Kurs aktualisiert!");
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="w-full text-xs h-8">
-                    Details & Bearbeiten
-                </Button>
+             <DialogTrigger asChild>
+                <Button variant="outline" size="sm">Bearbeiten</Button>
             </DialogTrigger>
+            
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                <TeacherSelectionProvider initialTags={initialTags} initialTeacherId={initialTeacher?.id}>
-                    <DialogHeader>
-                        <div className="flex justify-between items-center pr-8">
-                            <DialogTitle>Kurs bearbeiten</DialogTitle>
-                        </div>
-                        <DialogDescription>
-                            Details ansehen, bearbeiten oder den Kurs löschen.
-                        </DialogDescription>
-                    </DialogHeader>
+                <DialogHeader>
+                    <DialogTitle>Kurs bearbeiten: {course.title}</DialogTitle>
+                    <DialogDescription>
+                        Ändern Sie hier die Details des Kurses.
+                    </DialogDescription>
+                </DialogHeader>
 
-                    <form action={async (formData) => {
-                        await updateCourse(formData);
-                        setIsOpen(false);
-                    }} className="space-y-6 mt-4">
+                <TeacherSelectionProvider initialTeacherId={initialTeacher?.id} initialTags={course.tags.map(t => t.tag)}>
+                    <form action={handleSubmit} className="space-y-6 mt-4">
                         <input type="hidden" name="courseId" value={course.id} />
                         
                         <div className="space-y-2">
@@ -204,14 +183,14 @@ export function CourseEditDialog({ course, tracks, allTags }: CourseEditDialogPr
                             <Textarea id="description" name="description" defaultValue={course.description || ""} />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="startDate">Startdatum</Label>
-                                <Input type="date" id="startDate" name="startDate" defaultValue={course.startDate ? new Date(course.startDate).toISOString().split('T')[0] : ''} required />
+                                <Input type="date" id="startDate" name="startDate" defaultValue={new Date(course.startDate).toISOString().split('T')[0]} required />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="endDate">Enddatum</Label>
-                                <Input type="date" id="endDate" name="endDate" defaultValue={course.endDate ? new Date(course.endDate).toISOString().split('T')[0] : ''} required />
+                                <Input type="date" id="endDate" name="endDate" defaultValue={new Date(course.endDate).toISOString().split('T')[0]} required />
                             </div>
                         </div>
 
@@ -231,26 +210,83 @@ export function CourseEditDialog({ course, tracks, allTags }: CourseEditDialogPr
                                 </SelectContent>
                             </Select>
                         </div>
-                        
+
                         <div className="space-y-4 border p-4 rounded-md bg-slate-50">
                             <h3 className="font-medium text-sm">Qualifikationen & Dozenten</h3>
-                            <p className="text-xs text-gray-500 mb-2">
-                                Aktuelle Dozenten: {course.teachers.map((t: Teacher) => t.name).join(", ") || "Keine"}
-                            </p>
-                            <p className="text-xs text-amber-600 mb-4">
-                                Hinweis: Änderungen hier überschreiben die bestehenden Zuweisungen.
-                            </p>
+                            <p className="text-xs text-gray-500">Wählen Sie Tags für den Kurs, um qualifizierte Dozenten zu finden.</p>
+                            
                             <TagSelector allTags={allTags} />
                             <TeacherSelector />
                             
                             <InvitationList courseId={course.id} />
                         </div>
 
+                        {/* NEW: Student Assignment Section */}
+                        <div className="space-y-4 border p-4 rounded-md bg-slate-50 mt-4">
+                            <div className="flex justify-between items-center">
+                                <h3 className="font-medium text-sm">Teilnehmer (Studenten)</h3>
+                                <Badge variant="secondary">
+                                    {(course.students?.length || 0)} / 25
+                                </Badge>
+                            </div>
+                            
+                            <p className="text-xs text-gray-500 mb-2">
+                                Verwalten Sie die Teilnehmerliste für diesen Kurs. Max. 25 Teilnehmer.
+                            </p>
+
+                            <div className="text-sm bg-white rounded border overflow-hidden mb-2">
+                                <ScrollArea className="h-[150px]">
+                                {course.students && course.students.length > 0 ? (
+                                    <div className="divide-y">
+                                        {course.students.map(s => (
+                                            <div key={s.id} className="flex items-center justify-between p-2 hover:bg-gray-50 group">
+                                                <div className="flex items-center gap-2">
+                                                    <Avatar className="h-6 w-6">
+                                                        <AvatarFallback className="text-[10px] bg-slate-200">
+                                                            {s.name.charAt(0)}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div>
+                                                        <p className="font-medium text-xs">{s.name}</p>
+                                                        <p className="text-[10px] text-gray-500 leading-none">{s.email}</p>
+                                                    </div>
+                                                </div>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-6 w-6 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    onClick={async (e) => {
+                                                        e.preventDefault();
+                                                        try {
+                                                            await removeStudentFromCourse(course.id, s.id);
+                                                            toast.success("Student entfernt");
+                                                        } catch (err) {
+                                                            toast.error("Fehler beim Entfernen");
+                                                        }
+                                                    }}
+                                                >
+                                                    <XCircle size={14} />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="p-4 text-center text-gray-400 italic text-xs">Keine Studenten zugewiesen.</div>
+                                )}
+                                </ScrollArea>
+                            </div>
+
+                            <AssignStudentsToCourseDialog 
+                                courseId={course.id} 
+                                courseTitle={course.title}
+                                availableStudents={availableStudents}
+                                currentStudentIds={course.students?.map(s => s.id) || []}
+                            />
+                        </div>
+
                         <ActionButtons courseId={course.id} assignedTeacherId={initialTeacher?.id} />
 
-                        <Separator className="my-6" />
-
-                        <div className="flex justify-end">
+                        <div className="flex justify-end pt-4 border-t">
                              <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                     <Button variant="destructive" size="sm" className="gap-2">
@@ -272,12 +308,16 @@ export function CourseEditDialog({ course, tracks, allTags }: CourseEditDialogPr
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                         <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                                        <form action={async () => {
-                                            await deleteCourse(course.id);
-                                            setIsOpen(false);
-                                        }}>
-                                            <AlertDialogAction type="submit" className="bg-red-600 hover:bg-red-700">Ja, Kurs löschen</AlertDialogAction>
-                                        </form>
+                                        <Button 
+                                            variant="destructive"
+                                            onClick={async (e) => {
+                                                e.preventDefault();
+                                                await deleteCourse(course.id);
+                                                setIsOpen(false);
+                                            }}
+                                        >
+                                            Ja, Kurs löschen
+                                        </Button>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>

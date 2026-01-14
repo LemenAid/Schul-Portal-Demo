@@ -401,7 +401,10 @@ export async function resolveInquiry(formData: FormData) {
     const inquiryId = formData.get('inquiryId') as string;
     const answer = formData.get('answer') as string;
 
-    const inquiry = await prisma.inquiry.update({
+    const inquiry = await prisma.inquiry.findUnique({ where: { id: inquiryId } });
+    if (!inquiry) throw new Error("Inquiry not found");
+
+    const updatedInquiry = await prisma.inquiry.update({
         where: { id: inquiryId },
         data: { 
             status: 'ANSWERED',
@@ -412,7 +415,7 @@ export async function resolveInquiry(formData: FormData) {
     });
 
     // Notify the user who created the inquiry
-    await createNotification(inquiry.userId, `Deine Anfrage "${inquiry.subject}" wurde beantwortet.`, `/inquiries`);
+    await createNotification(updatedInquiry.userId, `Deine Anfrage "${updatedInquiry.subject}" wurde beantwortet.`, `/inquiries`);
 
     revalidatePath('/');
     revalidatePath('/inquiries');
@@ -661,7 +664,8 @@ export async function getTeacherCourses() {
             teachers: true,
             topics: {
                 orderBy: { startDate: 'asc' }
-            }
+            },
+            exams: true // Include exams for grade button
         }
     });
 }
@@ -672,6 +676,16 @@ export async function assignStudentsToTrack(trackId: string, studentIds: string[
     const user = await getCurrentUser();
     if (!user || (user.role !== 'staff' && user.role !== 'admin')) throw new Error("Unauthorized");
 
+    // 1. Check Track Limit
+    const currentTrackCount = await prisma.user.count({
+        where: { educationTrackId: trackId, role: 'student' }
+    });
+
+    if (currentTrackCount + studentIds.length > 25) {
+        throw new Error(`Track Limit erreicht. Maximal 25 Teilnehmer erlaubt (Aktuell: ${currentTrackCount}, Neu: ${studentIds.length}).`);
+    }
+
+    // 2. Assign to Track
     await prisma.user.updateMany({
         where: {
             id: { in: studentIds }
@@ -680,6 +694,35 @@ export async function assignStudentsToTrack(trackId: string, studentIds: string[
             educationTrackId: trackId
         }
     });
+
+    // 3. Auto-assign to linked Courses
+    const courses = await prisma.course.findMany({
+        where: { educationTrackId: trackId },
+        include: { students: { select: { id: true } } }
+    });
+
+    for (const course of courses) {
+        const currentCourseStudentIds = course.students.map(s => s.id);
+        const newStudentIds = studentIds.filter(id => !currentCourseStudentIds.includes(id));
+        
+        if (newStudentIds.length === 0) continue;
+
+        if (currentCourseStudentIds.length + newStudentIds.length > 25) {
+            // Log warning or handle silently? 
+            // For now, we skip auto-assignment to full courses to prevent errors.
+            console.warn(`Skipping auto-assignment for Course ${course.id} (Full)`);
+            continue; 
+        }
+
+        await prisma.course.update({
+            where: { id: course.id },
+            data: {
+                students: {
+                    connect: newStudentIds.map(id => ({ id }))
+                }
+            }
+        });
+    }
 
     revalidatePath('/planning');
 }
@@ -1075,6 +1118,61 @@ export async function deleteCourse(courseId: string) {
     revalidatePath('/planning');
 }
 
+
+export async function assignStudentsToCourse(courseId: string, studentIds: string[]) {
+    const user = await getCurrentUser();
+    if (!user || (user.role !== 'staff' && user.role !== 'admin')) throw new Error("Unauthorized");
+
+    // Get current student count to enforce limit
+    const course = await prisma.course.findUnique({
+        where: { id: courseId },
+        include: { students: true }
+    });
+
+    if (!course) throw new Error("Course not found");
+
+    // Calculate new total
+    // We are adding `studentIds`. Some might already be in `course.students`.
+    // The requirement is "max 25 students".
+    // We can just set the students relation, effectively replacing or adding.
+    // Ideally we merge unique IDs.
+    
+    // BUT the dialog `AssignStudentsDialog` usually selects *all* students intended for the track/course.
+    // If we use the same dialog logic, we send the FULL list of desired students.
+    
+    if (studentIds.length > 25) {
+         throw new Error("Maximal 25 Schüler pro Kurs erlaubt.");
+    }
+
+    // Set the students for this course
+    await prisma.course.update({
+        where: { id: courseId },
+        data: {
+            students: {
+                set: studentIds.map(id => ({ id }))
+            }
+        }
+    });
+
+    revalidatePath('/planning');
+}
+
+export async function removeStudentFromCourse(courseId: string, studentId: string) {
+    const user = await getCurrentUser();
+    if (!user || (user.role !== 'staff' && user.role !== 'admin')) throw new Error("Unauthorized");
+
+    await prisma.course.update({
+        where: { id: courseId },
+        data: {
+            students: {
+                disconnect: { id: studentId }
+            }
+        }
+    });
+
+    revalidatePath('/planning');
+}
+
 export async function getUnreadNotifications() {
     const user = await getCurrentUser();
     if (!user) return [];
@@ -1200,6 +1298,26 @@ export async function getPotentialRecipients() {
         admins,
         tracks
     };
+}
+
+export async function getAllStudents() {
+    const user = await getCurrentUser();
+    if (!user || (user.role !== 'staff' && user.role !== 'admin')) return [];
+
+    return prisma.user.findMany({
+        where: {
+            role: 'student'
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            educationTrack: {
+                select: { title: true }
+            }
+        },
+        orderBy: { name: 'asc' }
+    });
 }
 
 export async function getStudentsWithoutTrack() {

@@ -12,8 +12,10 @@ import {
   User, 
   BookOpen,
   Laptop,
-  Coffee
+  Coffee,
+  GraduationCap
 } from "lucide-react";
+import Link from "next/link";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,10 +47,12 @@ type Course = {
   endDate: Date | string;
   teachers: Teacher[];
   topics: Topic[];
+  exams?: { id: string }[];
 };
 
 interface CourseViewsProps {
   courses: Course[];
+  isTeacherView?: boolean;
 }
 
 const DAILY_SCHEDULE = [
@@ -65,7 +69,7 @@ const DAILY_SCHEDULE = [
   { start: "16:45", end: "17:30", label: "UE 10", type: "lesson", isTele: true, optional: true },
 ];
 
-export function CourseViews({ courses }: CourseViewsProps) {
+export function CourseViews({ courses, isTeacherView = false }: CourseViewsProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   // --- Weekly View Logic ---
@@ -77,25 +81,14 @@ export function CourseViews({ courses }: CourseViewsProps) {
   const today = () => setCurrentDate(new Date());
 
   const getTopicsForDay = (day: Date) => {
-    // const dayStart = startOfDay(day); // removed unused var
-    // const dayEnd = endOfDay(day); // removed unused var
-
     const activeTopics: { topic: Topic; course: Course }[] = [];
-
-    // Check if day is a holiday (dummy check, ideally from a database or config)
-    // Here we can assume no topics on weekends (handled by weekDays)
-    // But specific holidays would need logic. For now, we follow the structure.
 
     courses.forEach(course => {
       course.topics.forEach(topic => {
-        // Handle string dates if they come serialized
         const topicStart = new Date(topic.startDate);
         const topicEnd = new Date(topic.endDate);
 
-        // Check if day is within topic range
         if (isWithinInterval(day, { start: startOfDay(topicStart), end: endOfDay(topicEnd) })) {
-           // Exclude holidays logic if needed here
-           // For now just basic interval check
            activeTopics.push({ topic, course });
         }
       });
@@ -157,9 +150,8 @@ export function CourseViews({ courses }: CourseViewsProps) {
                     <div className="flex flex-col">
                       {DAILY_SCHEDULE.map((slot, index) => {
                         const slotIsPast = isPastTime(day, slot.end);
-                        const isTele = slot.isTele; // keep logic simple
+                        const isTele = slot.isTele;
 
-                        // Logic for "Pre-UE" specific content
                         if (slot.isPreUe) {
                              const isFriday = format(day, 'EEEE', { locale: de }) === 'Freitag';
                              const preUeContent = isFriday ? "Stuhl-Yoga" : "Ankommen, Einloggen, Stoff vom Vortag wiederholen";
@@ -184,18 +176,9 @@ export function CourseViews({ courses }: CourseViewsProps) {
                            )
                         }
 
-                        // Check if day is holiday/free (this logic might need enhancement if specific "holidays" exist in topics, currently we just show topics)
-                        // If "topics" contains a holiday marker, we should show it.
-                        // However, based on prompt: "unterrichts freien tage aus den kursinhalten in den kalender zu übernehmen und hinterlege diese violett"
-                        // This implies we should check if any topic is "Holiday" or similar.
-                        // Assuming "Ferien" or "Feiertag" in title marks it.
-
                         const holidayTopic = topics.find(t => t.topic.title.toLowerCase().includes("ferien") || t.topic.title.toLowerCase().includes("feiertag") || t.topic.title.toLowerCase().includes("frei"));
 
                         if (holidayTopic) {
-                             // If it's a holiday, we might want to just show one big block or override slots.
-                             // But inside the loop, we'll just show it for lesson slots if we want to maintain grid, OR return early for the whole day.
-                             // Let's override the content for lesson slots.
                              return (
                                   <div key={index} className="p-2 border-b text-sm bg-purple-100 dark:bg-purple-900/20">
                                       <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -205,7 +188,6 @@ export function CourseViews({ courses }: CourseViewsProps) {
                                   </div>
                              )
                         }
-
 
                         return (
                           <div key={index} className={`p-2 border-b text-sm ${slotIsPast ? 'bg-green-50 dark:bg-green-900/10' : (isTele ? 'bg-blue-50/50 dark:bg-blue-950/10' : '')}`}>
@@ -247,7 +229,9 @@ export function CourseViews({ courses }: CourseViewsProps) {
           {courses.map((course) => (
             <Card key={course.id} className="flex flex-col hover:shadow-lg transition-shadow">
               <CardHeader>
-                <CardTitle className="line-clamp-2 leading-tight">{course.title}</CardTitle>
+                <CardTitle className="line-clamp-2 leading-tight flex justify-between gap-2">
+                    <span>{course.title}</span>
+                </CardTitle>
                 <CardDescription className="flex items-center gap-2 mt-2">
                     <CalendarDays className="h-4 w-4" />
                     {new Date(course.startDate).toLocaleDateString('de-DE')} - {new Date(course.endDate).toLocaleDateString('de-DE')}
@@ -273,6 +257,17 @@ export function CourseViews({ courses }: CourseViewsProps) {
                         <span>{course.topics.length} Themengebiete</span>
                     </div>
                 </div>
+
+                {isTeacherView && (
+                    <div className="pt-2">
+                         <Button asChild variant="outline" className="w-full gap-2">
+                            <Link href={`/teacher/course/${course.id}/grades`}>
+                                <GraduationCap size={16} />
+                                Noten eintragen
+                            </Link>
+                        </Button>
+                    </div>
+                )}
               </CardContent>
             </Card>
           ))}

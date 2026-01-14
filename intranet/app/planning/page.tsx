@@ -1,4 +1,4 @@
-import { getEducationTracks, createCourse, getAllCourses, createEducationTrack, getStudentsWithoutTrack } from "@/lib/actions";
+import { getEducationTracks, createCourse, getAllCourses, createEducationTrack, getAllStudents } from "@/lib/actions";
 import { getCurrentUser } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ export default async function PlanningPage() {
     const tracks = await getEducationTracks();
     const allTags = await getAllTags();
     const allCourses = await getAllCourses(); // Fetch all courses
-    const availableStudents = await getStudentsWithoutTrack(); // Fetch students without track
+    const availableStudents = await getAllStudents(); // Fetch all students, not just those without track
 
     return (
       <TeacherSelectionProvider>
@@ -117,7 +117,7 @@ export default async function PlanningPage() {
                                         <TrackDetailsDialog 
                                             track={track} 
                                             students={track.users || []}
-                                            availableStudents={availableStudents}
+                                            availableStudents={availableStudents.filter(s => !s.educationTrack)}
                                         />
                                     </div>
                                 </CardContent>
@@ -269,6 +269,7 @@ export default async function PlanningPage() {
                                             course={course} 
                                             tracks={tracks} 
                                             allTags={allTags}
+                                            availableStudents={availableStudents}
                                         />
                                     </div>
                                 </Card>

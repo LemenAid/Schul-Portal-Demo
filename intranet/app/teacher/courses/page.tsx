@@ -19,7 +19,7 @@ export default async function TeacherCoursesPage() {
             </div>
 
             {courses.length > 0 ? (
-                <CourseViews courses={courses} />
+                <CourseViews courses={courses} isTeacherView={true} />
             ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-gray-500 bg-muted/30 rounded-lg border-2 border-dashed">
                     <BookOpen className="h-12 w-12 mb-4 opacity-20" />

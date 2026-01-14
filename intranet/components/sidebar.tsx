@@ -88,16 +88,10 @@ export async function Sidebar() {
           </Link>
           {user.role === 'student' && (
             <>
-              <Link href="/courses">
+              <Link href="/student/courses">
                 <Button variant="ghost" className="w-full justify-start gap-2 text-current hover:bg-white/20">
                   <CalendarDays size={20} />
-                  Kursplan
-                </Button>
-              </Link>
-              <Link href="/exams">
-                <Button variant="ghost" className="w-full justify-start gap-2 text-current hover:bg-white/20">
-                  <CalendarDays size={20} />
-                  Prüfungen
+                  Mein Studium
                 </Button>
               </Link>
             </>
