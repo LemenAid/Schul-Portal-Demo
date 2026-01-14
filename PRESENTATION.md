@@ -35,14 +35,16 @@
 ## 2. Role-Based Demo Scripts
 
 ### 🎓 Scenario 1: Student (Daily Routine)
-*Objective: Demonstrate time tracking and communication.*
+*Objective: Demonstrate time tracking, bulletin board, and communication.*
 
 1.  **Login** as `student@demo.com` -> Dashboard loads.
 2.  **Click** "Zeiterfassung" in Sidebar -> Time Tracking view opens.
 3.  **Click** green "Clock In" button -> Status changes to "Active", timer starts.
-4.  **Click** "Neue Anfrage" (Sidebar) -> Dialog opens.
-5.  **Select** "Verwaltung (Allgemein)" -> Subject: "Krankmeldung", Msg: "Bin heute krank."
-6.  **Click** "Absenden" -> Success toast appears.
+4.  **Click** "Schwarzes Brett" (Sidebar) -> Bulletin board loads.
+5.  **Click** "Eintrag erstellen" -> Create a "Suche Nachhilfe" post with 7-day expiration.
+6.  **Click** "Neue Anfrage" (Sidebar) -> Dialog opens.
+7.  **Select** "Verwaltung (Allgemein)" -> Subject: "Krankmeldung", Msg: "Bin heute krank."
+8.  **Click** "Absenden" -> Success toast appears.
 
 ### 👨‍🏫 Scenario 2: Teacher (Exam Management)
 *Objective: Schedule an exam and grade it.*

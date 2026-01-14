@@ -34,6 +34,10 @@ The following features and improvements are planned for upcoming iterations of t
 *   **Audit Logs:** Implement detailed logging of all administrative actions (who changed what and when) for security and accountability.
 *   **System Health Dashboard:** visual real-time metrics for server load, database connections, and error rates.
 
+### 7. 📌 Bulletin Board Enhancements
+*   **Expiration Management:** Users can set an expiration date (3, 7, 14, 30 days) for their posts. Expired posts are visually distinguished (grayed out) or automatically archived.
+*   **Search & Filter:** Advanced filtering by "Search" vs "Offer" and full-text search for post content.
+
 ---
 
 ## 1. Technical Implementation

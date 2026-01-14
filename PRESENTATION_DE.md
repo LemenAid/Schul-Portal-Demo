@@ -35,14 +35,16 @@
 ## 2. Rollenbasierte Demo-Skripte
 
 ### 🎓 Szenario 1: Schüler (Tagesablauf)
-*Ziel: Zeiterfassung und Kommunikation demonstrieren.*
+*Ziel: Zeiterfassung, Schwarzes Brett und Kommunikation demonstrieren.*
 
 1.  **Login** als `student@demo.com` -> Dashboard lädt.
 2.  **Klick** auf "Zeiterfassung" in der Sidebar -> Zeiterfassungsansicht öffnet sich.
 3.  **Klick** auf grünen "Clock In" Button -> Status ändert sich zu "Aktiv", Timer startet.
-4.  **Klick** auf "Neue Anfrage" (Sidebar) -> Dialog öffnet sich.
-5.  **Wähle** "Verwaltung (Allgemein)" -> Betreff: "Krankmeldung", Nachricht: "Bin heute krank."
-6.  **Klick** auf "Absenden" -> Erfolgsmeldung erscheint.
+4.  **Klick** auf "Schwarzes Brett" (Sidebar) -> Schwarzes Brett lädt.
+5.  **Klick** auf "Eintrag erstellen" -> Erstelle einen "Suche Nachhilfe" Post mit 7 Tagen Laufzeit.
+6.  **Klick** auf "Neue Anfrage" (Sidebar) -> Dialog öffnet sich.
+7.  **Wähle** "Verwaltung (Allgemein)" -> Betreff: "Krankmeldung", Nachricht: "Bin heute krank."
+8.  **Klick** auf "Absenden" -> Erfolgsmeldung erscheint.
 
 ### 👨‍🏫 Szenario 2: Lehrer (Prüfungsverwaltung)
 *Ziel: Eine Prüfung planen und benoten.*

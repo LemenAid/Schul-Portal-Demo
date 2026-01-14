@@ -167,6 +167,8 @@ model BulletinPost {
   userId      String?  // Optional für MVP (Gast-Posts möglich machen oder festen User nutzen)
   user        User?    @relation(fields: [userId], references: [id])
   
+  expiresAt   DateTime? // Neu: Ablaufdatum für Posts
+  
   createdAt   DateTime @default(now())
 }
 

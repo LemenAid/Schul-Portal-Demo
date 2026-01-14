@@ -2,6 +2,14 @@
 
 Eine umfassende Intranet-Lösung für Bildungseinrichtungen zur Verwaltung von Schülern, Lehrern, Mitarbeitern, Kursen und Zeiterfassung.
 
+## ✨ Hauptfunktionen
+
+*   **Rollenbasierte Dashboards:** Maßgeschneiderte Ansichten für Schüler, Lehrer, Mitarbeiter und Administratoren.
+*   **Zeiterfassung:** Rechtskonformes Check-in/Check-out-System für Schüler.
+*   **Kurs- & Prüfungsverwaltung:** Planung von Stundenplänen, Benotung und Lehrplänen.
+*   **Schwarzes Brett:** "Suche/Biete"-Marktplatz mit automatischer Ablaufsteuerung für Beiträge.
+*   **Anfrage-System:** Direkter Kommunikationskanal zwischen Schülern und Abteilungen.
+
 ## 🚀 Erste Schritte
 
 ### Voraussetzungen

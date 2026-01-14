@@ -16,6 +16,7 @@ import {
 import { PlusCircle } from "lucide-react"
 import { createBulletinPost } from "@/lib/actions"
 import { toast } from "sonner"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const initialState = {
   message: "",
@@ -64,16 +65,33 @@ export function CreatePostDialog() {
                         <Label htmlFor="contactInfo">Kontakt</Label>
                         <Input id="contactInfo" name="contactInfo" placeholder="Email oder Telefonnummer" required />
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="type">Typ</Label>
-                        <select
-                            name="type"
-                            id="type"
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            <option value="SEARCH">Suche</option>
-                            <option value="OFFER">Biete</option>
-                        </select>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="type">Typ</Label>
+                            <Select name="type" defaultValue="SEARCH">
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="SEARCH">Suche</SelectItem>
+                                    <SelectItem value="OFFER">Biete</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="expiresIn">Läuft ab in</Label>
+                            <Select name="expiresIn" defaultValue="7">
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="3">3 Tage</SelectItem>
+                                    <SelectItem value="7">1 Woche</SelectItem>
+                                    <SelectItem value="14">2 Wochen</SelectItem>
+                                    <SelectItem value="30">1 Monat</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button type="submit" disabled={isPending}>{isPending ? "Speichern..." : "Veröffentlichen"}</Button>

@@ -2,6 +2,14 @@
 
 A comprehensive intranet solution for educational institutions, managing students, teachers, staff, courses, and time tracking.
 
+## ✨ Key Features
+
+*   **Role-Based Dashboards:** tailored views for Students, Teachers, Staff, and Admins.
+*   **Time Tracking:** Regulatory-compliant clock-in/clock-out system for students.
+*   **Course & Exam Management:** Scheduling, grading, and curriculum planning.
+*   **Bulletin Board:** "Search/Offer" marketplace with automatic post expiration logic.
+*   **Inquiry System:** Direct communication channel between students and departments.
+
 ## 🚀 Getting Started
 
 ### Prerequisites

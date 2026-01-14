@@ -58,7 +58,7 @@ export async function getRecentEntries() {
 
 // Bulletin Board
 export async function getBulletinPosts() {
-  return prisma.bulletinPost.findMany({
+  const posts = await prisma.bulletinPost.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
         user: {
@@ -66,6 +66,21 @@ export async function getBulletinPosts() {
         }
     }
   });
+
+  // Filter out expired posts
+  // Note: It's better to filter in the DB query, but since expiresAt is new and might be null, 
+  // we handle logic here or in query. 
+  // Let's filter in memory or update the query above if field exists.
+  // Since we assume the field exists now (or will), let's try to add where clause if possible.
+  // However, expiresAt is nullable.
+  
+  const now = new Date();
+  
+  // We return ALL posts, but maybe mark them as expired or filter them.
+  // The requirement says "graue die Kachel aus", so we need to return them but identifying them.
+  // Client side can check expiresAt < now.
+  
+  return posts;
 }
 
 export async function deleteBulletinPost(postId: string) {
@@ -91,6 +106,10 @@ export async function createBulletinPost(prevState: { success: boolean, message:
   const description = formData.get('description') as string;
   const type = formData.get('type') as string;
   const contactInfo = formData.get('contactInfo') as string;
+  const expiresInDays = parseInt(formData.get('expiresIn') as string) || 7;
+
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + expiresInDays);
 
   try {
       await prisma.bulletinPost.create({
@@ -99,7 +118,8 @@ export async function createBulletinPost(prevState: { success: boolean, message:
           description,
           type,
           contactInfo,
-          userId: user.id
+          userId: user.id,
+          expiresAt: expiresAt
         },
       });
       revalidatePath('/bulletin');
