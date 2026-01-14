@@ -38,7 +38,8 @@ import {
   PlusCircle,
   GraduationCap,
   HelpCircle,
-  CalendarDays
+  CalendarDays,
+  Hourglass
 } from "lucide-react";
 import { 
   getAnnouncements, 
@@ -173,6 +174,24 @@ export default async function Home() {
       nextExams = [];
   }
 
+  // Calculate countdown days
+  const calculateDaysLeft = (targetDate: Date) => {
+    const diffTime = targetDate.getTime() - new Date().getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  // Check if user is in "Winter 2025" track
+  let isWinter2025 = false;
+  if (user.role === 'student' && user.educationTrackId) {
+      const track = await prisma.educationTrack.findUnique({
+          where: { id: user.educationTrackId },
+          select: { title: true }
+      });
+      if (track?.title.toLowerCase().includes('winter 2025') || track?.title.toLowerCase().includes('wi 25')) {
+          isWinter2025 = true;
+      }
+  }
+
   // Formatierungs-Helper
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -205,6 +224,34 @@ export default async function Home() {
           {/* TEACHER INVITATIONS WIDGET */}
           {user.role === 'teacher' && teacherInvitations.length > 0 && (
             <TeacherInvitations invitations={teacherInvitations} />
+          )}
+
+          {/* COUNTDOWN WIDGET (Nur für Winter 2025 Studenten) */}
+          {isWinter2025 && (
+             <div className="grid grid-cols-2 gap-4">
+                <Card className="bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-md">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-blue-100 flex items-center gap-2">
+                            <Hourglass className="h-4 w-4" /> AP1 Countdown
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{calculateDaysLeft(new Date('2026-02-24'))} Tage</div>
+                        <p className="text-xs text-blue-200 mt-1">bis 24.02.2026</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white shadow-md">
+                    <CardHeader className="pb-2">
+                         <CardTitle className="text-sm font-medium text-indigo-100 flex items-center gap-2">
+                            <Hourglass className="h-4 w-4" /> AP2 Countdown
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{calculateDaysLeft(new Date('2026-11-23'))} Tage</div>
+                        <p className="text-xs text-indigo-200 mt-1">bis 23.11.2026</p>
+                    </CardContent>
+                </Card>
+             </div>
           )}
 
           {/* OFFENE ANFRAGEN WIDGET (Für ALLE Rollen) */}
