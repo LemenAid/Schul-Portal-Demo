@@ -1,5 +1,41 @@
 # VIBE Portal - Technical Documentation
 
+## 🚀 Features for Future Planning
+
+The following features and improvements are planned for upcoming iterations of the VIBE Portal. These aim to enhance scalability, user experience, and administrative control.
+
+### 1. 🏗️ Architecture & Database Redesign
+*   **Database Schema Optimization:** Re-evaluate existing relationships to reduce redundancy and support more complex query patterns (e.g., historical tracking of grade changes).
+*   **Performance Tuning:** Implement database indexing strategies and analyze query performance to prevent bottlenecks as data volume grows.
+*   **Scalability Check:** Ensure the database design can handle a significant increase in concurrent users and data entries over the next 2-3 years.
+
+### 2. 🎨 UI/UX Overhaul
+*   **Modern Design Language:** Refresh the user interface with a more cohesive and accessible design system, ensuring consistent spacing, typography, and color usage.
+*   **Mobile Responsiveness:** rigorously test and improve mobile layouts for all roles, ensuring seamless usage on smartphones and tablets.
+*   **Accessibility (a11y):** Audit the entire application for WCAG 2.1 compliance to support users with disabilities (screen readers, keyboard navigation).
+
+### 3. 🧪 Comprehensive Testing Strategy
+*   **Expanded Test Coverage:** Move beyond basic unit tests to include integration and end-to-end (E2E) tests covering critical user flows.
+*   **Edge Case Scenarios:** specifically target edge cases in role-based access and data validation.
+*   **Automated Regression Testing:** Implement CI/CD pipelines that run comprehensive test suites on every pull request to prevent regressions.
+
+### 4. 📂 Document Management System (DMS) / File Uploads
+*   **Teacher Resources:** Enable teachers to upload lecture notes, slides, and supplementary materials directly to their courses.
+    *   *Non-Technical Guide:* Create a simple, drag-and-drop interface with clear instructions (e.g., "Drag your PDF here") to minimize friction for non-technical staff.
+*   **Student Assignments:** Allow students to upload homework and project files directly to specific course modules.
+*   **CMS Integration:** Consider integrating a lightweight Headless CMS (like Strapi or Contentful) or building a dedicated DMS module for handling file versioning and permissions.
+
+### 5. 💬 Enhanced Course Interaction
+*   **Course Comments/Announcements:** Add a "Teacher's Board" to each course where instructors can post updates, tech stack details (e.g., "We will use React 19 & Tailwind"), or last-minute changes.
+*   **Tech Stack Specification:** Allow teachers to define the specific technologies used in a course module (e.g., version numbers, required software) visible in the course overview.
+
+### 6. 🛠️ Advanced Admin Support Tools
+*   **Impersonation Mode:** Allow admins to "view as" a specific user to troubleshoot issues exactly as the user sees them.
+*   **Audit Logs:** Implement detailed logging of all administrative actions (who changed what and when) for security and accountability.
+*   **System Health Dashboard:** visual real-time metrics for server load, database connections, and error rates.
+
+---
+
 ## 1. Technical Implementation
 
 This project is a modern intranet application built with **Next.js 15**, utilizing the App Router and Server Actions for a seamless full-stack experience. The system is designed to handle role-based access control (RBAC) for Students, Teachers, Staff, and Administrators.
