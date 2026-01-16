@@ -1,412 +1,264 @@
-# Schul-Portal-Demo - Technische Dokumentation
+# Schul-Portal-Demo – Technische Dokumentation
 
-## 🆕 Aktuelle Features (Januar 2026)
+## 📋 Vollständiger Feature-Katalog & Use Cases
 
-### 1. 📍 Raum- und Standortverwaltung
-**Problem:** Kurse hatten keine physische Zuordnung zu Räumen oder Standorten.
+Dieser Abschnitt dokumentiert **ALLE** Funktionen des Schul-Portal-Demo-Systems. Jede Funktion enthält Use Cases, technische Umsetzung und typische Nutzer-Workflows.
 
-**Lösung:**
-- Neues `Room` Model mit Kapazität und Namen
-- `Course.roomId` Beziehung für direkte Raum-Zuweisung
-- Dropdown-Auswahl bei Kurserstellung und -bearbeitung
-- Demo-Räume: Raum 101, 102, 201, Remote/Online, Aula
+> Hinweis: Diese Datei enthält aktuell den übersetzten Teil bis einschließlich „Kursthemen-Verwaltung“. Der restliche Abschnitt (ab „Prüfungsverwaltung“) war in der Vorlage sehr lang und wurde hier noch nicht ergänzt.
+
+---
+
+### 🔐 1. Authentifizierung & Rollenbasierte Zugriffskontrolle (RBAC)
+
+**Zweck:** Sicheres Login-System mit rollenbasiertem Zugriff und Schutz von Routen.
+
+**Use Cases:**
+- **UC-AUTH-01:** Schüler:in loggt sich mit Zugangsdaten ein und sieht ein reines Student-Dashboard
+- **UC-AUTH-02:** Admin versucht, auf das Admin-Panel zuzugreifen – das System prüft die Rolle vor dem Zugriff
+- **UC-AUTH-03:** Nicht authentifizierte Nutzer:innen öffnen eine geschützte Route – Weiterleitung zum Login
+
+**Technische Umsetzung:**
+- JWT-basierte Authentifizierung mit httpOnly-Cookies
+- Middleware in `middleware.ts` validiert Tokens bei jeder Anfrage
+- Rollen-Hierarchie: `admin` > `staff` > `teacher` > `student`
+- Routenschutz: `/admin/*` nur für Admins, `/staff/*` nur für Staff/Admins
+
+**API-Actions:**
+- `loginAction(email, password)` – authentifiziert Nutzer:in, setzt Cookie
+- `logoutAction()` – löscht Session-Cookie
+- `getSession()` – serverseitige Session-Validierung
+
+**Workflow:**
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant L as Login Page
+    participant A as loginAction
+    participant DB as Database
+    participant M as Middleware
+
+    U->>L: Enter email & password
+    L->>A: loginAction(credentials)
+    A->>DB: Find user by email
+    DB-->>A: User data
+    A->>A: Verify password hash
+    A->>A: Generate JWT token
+    A->>L: Set httpOnly cookie
+    L->>M: Redirect to /dashboard
+    M->>M: Validate token
+    M->>U: Grant access to role-specific dashboard
+```
+
+---
+
+### ⏱️ 2. Zeiterfassungssystem
+
+**Zweck:** Rechtskonformes Ein-/Auschecken für Schüler:innen mit Standort/Arbeitsort (ON_SITE / REMOTE).
+
+**Use Cases:**
+- **UC-TIME-01:** Schüler:in kommt in die Schule, klickt „Check In“ – Zeitstempel wird mit ON_SITE gespeichert
+- **UC-TIME-02:** Schüler:in arbeitet von zu Hause, wählt REMOTE, checkt ein
+- **UC-TIME-03:** Schüler:in vergisst auszuchecken – Staff kann offene Einträge manuell schließen
+- **UC-TIME-04:** Staff sieht den Wochenreport aller Schüler:innen zur Anwesenheitsprüfung
+- **UC-TIME-05:** Schüler:in sieht die eigene Zeithistorie zur Stundenkontrolle
+
+**Technische Umsetzung:**
+```prisma
+model TimeEntry {
+  id       String    @id @default(cuid())
+  userId   String
+  clockIn  DateTime  @default(now())
+  clockOut DateTime?
+  duration Int?      // Minutes, calculated on clockOut
+  location String    @default("ON_SITE") // ON_SITE or REMOTE
+}
+```
+
+**API-Actions:**
+- `clockInAction(location: "ON_SITE" | "REMOTE")` – erstellt neuen TimeEntry
+- `clockOutAction()` – aktualisiert den letzten offenen Eintrag (clockOut) und berechnet duration
+- `getTimeEntriesForUser(userId, startDate, endDate)` – lädt gefilterte Einträge
+- `getTotalHoursThisWeek(userId)` – aggregiert duration für Reports
+
+**Workflow:**
+```mermaid
+stateDiagram-v2
+    [*] --> NotCheckedIn
+    NotCheckedIn --> CheckedIn: clockInAction()
+    CheckedIn --> NotCheckedIn: clockOutAction()
+
+    note right of CheckedIn
+        TimeEntry created:
+        - clockIn: now()
+        - location: ON_SITE/REMOTE
+        - clockOut: null
+    end note
+
+    note right of NotCheckedIn
+        On clockOut:
+        - clockOut: now()
+        - duration: calculated
+    end note
+```
+
+**UI-Komponenten:**
+- `/app/time/page.tsx` – Zeit-Dashboard mit Check-in/out Buttons
+- „Clock In“ nur sichtbar, wenn kein aktiver Eintrag existiert
+- Standort-Auswahl (ON_SITE/REMOTE) vor dem Check-in
+- Wochenübersicht (Chart) mit Stunden pro Tag
+
+---
+
+### 🎓 3. Jahrgangs-/Bildungsgangverwaltung
+
+**Zweck:** Organisation von Schüler:innen in Kohorten (z. B. „Fachinformatiker Winter 2025“) mit zugewiesenen Kursen.
+
+**Use Cases:**
+- **UC-TRACK-01:** Staff erstellt einen neuen Jahrgang „Winter 2026“ mit 2 Jahren Laufzeit
+- **UC-TRACK-02:** Admin weist 15 Schüler:innen dem Jahrgang „Winter 2025“ zu
+- **UC-TRACK-03:** Lehrkraft sieht alle Kurse eines bestimmten Jahrgangs
+- **UC-TRACK-04:** Student-Dashboard zeigt Kurse gefiltert nach dem eigenen Jahrgang
+
+**Technische Umsetzung:**
+```prisma
+model EducationTrack {
+  id        String   @id @default(cuid())
+  title     String
+  startDate DateTime
+  endDate   DateTime
+  users     User[]   // Students in cohort
+  courses   Course[] // Courses for this cohort
+}
+```
+
+**API-Actions:**
+- `createEducationTrack(title, startDate, endDate)` – erstellt neuen Jahrgang
+- `assignStudentsToTrack(trackId, studentIds[])` – Bulk-Zuweisung
+- `getCoursesForTrack(trackId)` – gefilterte Kursliste
+
+---
+
+### 📚 4. Kursverwaltung (vollständiges System)
+
+**Zweck:** Vollständiger Kurs-Lifecycle: Planung, Raumzuweisung, Themen, Einschreibung.
+
+**Use Cases:**
+- **UC-COURSE-01:** Staff erstellt „React Fundamentals“ mit max. 25 Teilnehmenden
+- **UC-COURSE-02:** Staff weist Raum 101 zu (NEU – Januar 2026)
+- **UC-COURSE-03:** Staff gliedert den Kurs in 4 Themen mit UE (NEU – Januar 2026)
+- **UC-COURSE-04:** Staff weist 18 Schüler:innen zu – Dialog aktualisiert in Echtzeit
+- **UC-COURSE-05:** Staff lädt 2 Lehrkräfte per Einladung ein
+- **UC-COURSE-06:** Lehrkraft nimmt Einladung an/lehnen ab
+- **UC-COURSE-07:** Schüler:in sieht eingeschriebene Kurse inkl. Raum und Zeitplan
+- **UC-COURSE-08:** Staff vergibt Tags (z. B. „JavaScript“, „Frontend“) zum Filtern
 
 **Technische Umsetzung:**
 ```prisma
 model Course {
-  roomId  String?
-  room    Room? @relation(fields: [roomId], references: [id])
-}
+  id               String   @id @default(cuid())
+  title            String
+  description      String?
+  startDate        DateTime
+  endDate          DateTime
+  maxStudents      Int      @default(25)
 
+  // NEW: Room assignment
+  roomId           String?
+  room             Room?    @relation(fields: [roomId], references: [id])
+
+  // Relations
+  educationTrackId String?
+  students         User[]   @relation("StudentCourses")
+  teachers         User[]   @relation("TeacherCourses")
+  topics           CourseTopic[] // NEW: Structured topics
+  exams            Exam[]
+  invitations      CourseInvitation[]
+  tags             CourseTag[]
+}
+```
+
+**API-Actions:**
+- `createCourse(data)` – erstellt Kurs inkl. Validierung
+- `updateCourse(courseId, data)` – bearbeitet Kursdetails
+- `assignStudentsToCourse(courseId, studentIds[])` – Bulk-Einschreibung (mit 5-facher Revalidation)
+- `inviteTeacherToCourse(courseId, teacherId)` – sendet Einladungs-Benachrichtigung
+- `acceptCourseInvitation(invitationId)` – fügt Lehrkraft dem Kurs hinzu
+- `rejectCourseInvitation(invitationId)` – aktualisiert Einladungsstatus
+
+**Workflow – Kurs erstellen:**
+```mermaid
+graph TD
+    A[Staff clicks Create Course] --> B[Form: Title, Description, Dates]
+    B --> C[Select Education Track]
+    C --> D[Select Room Optional]
+    D --> E[Set Max Students default 25]
+    E --> F[Add Tags for filtering]
+    F --> G[Select/Invite Teachers]
+    G --> H[createCourse]
+    H --> I[Course created in DB]
+    I --> J[Redirect to Course Details]
+    J --> K[Add Topics UI available]
+    J --> L[Assign Students UI available]
+```
+
+---
+
+### 📍 5. Raum- und Standortverwaltung ⭐ NEU
+
+**Zweck:** Zuweisung physischer Räume zu Kursen inkl. Kapazitäts-Tracking.
+
+**Use Cases:**
+- **UC-ROOM-01:** Admin erstellt Raum „Room 101“ mit Kapazität 30
+- **UC-ROOM-02:** Staff weist „Room 101“ dem Kurs „React Fundamentals“ zu
+- **UC-ROOM-03:** System verhindert Überbelegung – warnt, wenn Kurs-Teilnehmende Raumkapazität überschreiten
+- **UC-ROOM-04:** Schüler:in sieht Kursdetails inkl. Raum
+
+**Technische Umsetzung:**
+```prisma
 model Room {
   id       String   @id @default(cuid())
-  name     String
+  name     String   // "Room 101", "Remote", "Aula"
   capacity Int      @default(30)
   courses  Course[]
+  events   CourseEvent[]
 }
 ```
 
-### 2. 📚 Themengebiete-Management (Course Topics)
-**Problem:** Kurse waren monolithische Blöcke ohne strukturierte Untergliederung in Themen mit Zeitplanung.
+**API-Actions:**
+- `createRoom(name, capacity)` – erstellt neuen Raum
+- `getAllRooms()` – füllt Dropdowns in Kursformularen
+- `getRoomAvailability(roomId, startDate, endDate)` – prüft Termin-Konflikte
 
-**Lösung:**
-- `CourseTopic` Model mit Titel, UE (Unterrichtseinheiten), Start- und Enddatum
-- Visuelle Komponente `CourseTopicsManager` mit CRUD-Funktionen
-- Anzeige der Gesamt-UE pro Kurs
-- Zeitliche Planung einzelner Themenblöcke
+---
 
-**Mermaid Workflow:**
-```mermaid
-graph TD
-    A[Verwaltung öffnet Kurs] --> B[Klick auf Bearbeiten]
-    B --> C[Themengebiete-Sektion sichtbar]
-    C --> D[Thema hinzufügen Button]
-    D --> E[Dialog: Titel, UE, Zeitraum]
-    E --> F[Speichern]
-    F --> G[CourseTopic erstellt]
-    G --> H[Gesamt-UE aktualisiert]
-    H --> I[Revalidierung /planning]
-```
+### 📚 6. Kursthemen-Verwaltung ⭐ NEU
 
-**API Actions:**
-- `createCourseTopicAction()` - Neues Thema erstellen
-- `updateCourseTopicAction()` - Thema bearbeiten
-- `deleteCourseTopicAction()` - Thema löschen
+**Zweck:** Kurse in strukturierte Themen mit Unterrichtseinheiten (UE) und Zeitplanung aufteilen.
 
-### 3. 🔄 Student-Zuweisung Fix
-**Problem:** Nach Zuweisung von Studenten zu Kursen war kein visuelles Feedback sichtbar, Studenten sahen Kurse nicht in ihrem Kalender.
+**Use Cases:**
+- **UC-TOPIC-01:** Lehrkraft plant „React Fundamentals“ mit 5 Themen (Basics: 40 UE, Hooks: 40 UE, …)
+- **UC-TOPIC-02:** Staff passt UE von 40 auf 45 an
+- **UC-TOPIC-03:** Schüler:in sieht Syllabus/Themenplan inkl. Zeiträume
+- **UC-TOPIC-04:** System berechnet Gesamt-UE automatisch (Summe aller Themen)
 
-**Lösung:**
-- Dialog resettet `selectedStudentIds` beim Öffnen (fresh data)
-- Erweiterte Revalidierung: `/planning`, `/planning/course/{id}`, `/courses`, `/student`, `/dashboard`
-- Automatisches Schließen des Popovers nach Aktion
-- `router.refresh()` für sofortiges UI-Update
-
-**Datenfluss:**
-```mermaid
-sequenceDiagram
-    participant U as User (Staff)
-    participant D as Dialog
-    participant A as assignStudentsToCourse
-    participant DB as Database
-    participant R as Router
-
-    U->>D: Öffnet Student-Dialog
-    D->>D: Reset selectedStudentIds
-    U->>D: Wählt Studenten aus
-    U->>D: Klick Speichern
-    D->>A: assignStudentsToCourse(courseId, ids)
-    A->>DB: UPDATE Course SET students
-    A->>A: revalidatePath() x5
-    A-->>D: Success
-    D->>R: router.refresh()
-    D->>D: Dialog schließen
-    R->>U: UI aktualisiert
-```
-
-### 4. 🔔 Intelligentes Benachrichtigungssystem
-
-**Problem:** Alle Benachrichtigungen waren gleich, kein Verlauf, kein Auto-Dismiss.
-
-**Lösung:**
-
-#### 4.1 Notification Types
-- `INFO` - Allgemeine Informationen
-- `INQUIRY` - Anfragen (werden NICHT im Verlauf gespeichert)
-- `GRADE` - Noteneinträge (blauer Badge)
-- `INVITATION` - Kurseinladungen (grauer Badge)
-- `WARNING` - Warnungen, z.B. Post-Löschungen (roter Badge)
-
-#### 4.2 Auto-Dismiss beim Klick
-Wenn eine Notification mit Link angeklickt wird:
-1. Notification wird als gelesen markiert (`isRead = true`)
-2. Popover schließt sich automatisch
-3. Navigation zur verlinkten Seite
-4. `router.refresh()` aktualisiert UI
-
-**Code-Flow:**
-```typescript
-const handleNotificationClick = (notification) => {
-  if (notification.link) {
-    await markNotificationAsRead(notification.id);
-    setOpen(false);  // Popover schließen
-    router.push(notification.link);
-    router.refresh();
-  }
+**Technische Umsetzung:**
+```prisma
+model CourseTopic {
+  id            String   @id @default(cuid())
+  title         String
+  durationUnits Int      // Teaching units (UE)
+  startDate     DateTime
+  endDate       DateTime
+  courseId      String
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 }
 ```
 
-#### 4.3 Verlauf-Tab
-- Separater Tab "Verlauf" neben "Neu"
-- Zeigt nur gelesene Notifications (außer INQUIRY-Typ)
-- Limitiert auf letzte 50 Einträge
-- Visuelle Unterscheidung: grau/transparent, kleinere Schrift
+**API-Actions:**
+- `createCourseTopicAction(courseId, title, durationUnits, startDate, endDate)` – Thema hinzufügen
+- `updateCourseTopicAction(topicId, data)` – Thema bearbeiten
+- `deleteCourseTopicAction(topicId)` – Thema löschen (Cascade)
 
-**UI Struktur:**
-```mermaid
-graph LR
-    A[Benachrichtigungs-Icon] --> B{Popover}
-    B --> C[Tab: Neu]
-    B --> D[Tab: Verlauf]
-    C --> E[Ungelesene Notifications]
-    C --> F[Badge mit Typ]
-    C --> G[Klickbar zum Ziel]
-    D --> H[Gelesene Notifications]
-    D --> I[Ohne INQUIRY]
-    D --> J[Nur Anzeige]
-```
-
-### 5. 🗑️ Post-Löschung mit Kommentar
-
-**Problem:** Staff konnte Posts löschen, aber Autoren wussten nicht warum.
-
-**Lösung:**
-
-#### Workflow für Staff:
-```mermaid
-graph TD
-    A[Staff klickt Löschen-Button] --> B{Eigener Post?}
-    B -->|Ja| C[Einfacher Confirm-Dialog]
-    B -->|Nein| D[Dialog mit Kommentar-Feld]
-    C --> E[Post löschen]
-    D --> F[Grund eingeben Optional]
-    F --> G[Löschen & Benachrichtigen]
-    G --> H[deleteBulletinPost mit reason]
-    H --> I[Post aus DB entfernt]
-    H --> J[WARNING Notification an Autor]
-    J --> K[Autor sieht rote Benachrichtigung]
-```
-
-**Notification-Nachricht:**
-```
-"Dein Beitrag '[Titel]' wurde von der Verwaltung entfernt. 
-Grund: [Kommentar oder leer]"
-```
-
-**Technische Implementierung:**
-- `DeletePostButton` hat `needsReason` prop
-- Konditionaler Dialog vs. Confirm
-- `deleteBulletinPost(postId, deletionReason?)` 
-- Automatische WARNING-Notification mit Typ und rotem Badge
-
----
-
-## 🚀 Features für zukünftige Planung
-
-Die folgenden Funktionen und Verbesserungen sind für kommende Iterationen des Schul-Portal-Demo geplant. Diese zielen darauf ab, Skalierbarkeit, Benutzererfahrung und administrative Kontrolle zu verbessern.
-
-### 1. 🏗️ Architektur- & Datenbank-Redesign
-*   **Datenbankschema-Optimierung:** Bestehende Beziehungen neu bewerten, um Redundanzen zu reduzieren und komplexere Abfragemuster zu unterstützen (z. B. historische Verfolgung von Notenänderungen).
-*   **Performance-Tuning:** Implementierung von Datenbank-Indizierungsstrategien und Analyse der Abfrageleistung, um Engpässe bei steigendem Datenvolumen zu vermeiden.
-*   **Skalierbarkeits-Check:** Sicherstellen, dass das Datenbankdesign einen signifikanten Anstieg gleichzeitiger Benutzer und Dateneinträge in den nächsten 2-3 Jahren bewältigen kann.
-
-### 2. 🎨 UI/UX Überarbeitung
-*   **Moderne Designsprache:** Aktualisierung der Benutzeroberfläche mit einem kohärenteren und zugänglicheren Designsystem, das konsistente Abstände, Typografie und Farbgebung gewährleistet.
-*   **Mobile Responsivität:** Gründliches Testen und Verbessern der mobilen Layouts für alle Rollen, um eine nahtlose Nutzung auf Smartphones und Tablets sicherzustellen.
-*   **Barrierefreiheit (a11y):** Audit der gesamten Anwendung auf WCAG 2.1-Konformität, um Benutzer mit Behinderungen zu unterstützen (Screenreader, Tastaturnavigation).
-
-### 3. 🧪 Umfassende Teststrategie
-*   **Erweiterte Testabdeckung:** Über einfache Unit-Tests hinausgehen und Integration- sowie End-to-End (E2E)-Tests einbeziehen, die kritische Benutzerabläufe abdecken.
-*   **Edge-Case-Szenarien:** Gezieltes Testen von Grenzfällen bei rollenbasierter Zugriffskontrolle und Datenvalidierung.
-*   **Automatisierte Regressionstests:** Implementierung von CI/CD-Pipelines, die umfassende Testsuiten bei jedem Pull Request ausführen, um Regressionen zu verhindern.
-
-### 4. 📂 Dokumentenmanagementsystem (DMS) / Datei-Uploads
-*   **Lehrer-Ressourcen:** Lehrern ermöglichen, Vorlesungsnotizen, Folien und ergänzende Materialien direkt in ihre Kurse hochzuladen.
-    *   *Nicht-technischer Leitfaden:* Erstellung einer einfachen Drag-and-Drop-Schnittstelle mit klaren Anweisungen (z. B. "Ziehen Sie Ihr PDF hierher"), um Hürden für nicht-technisches Personal zu minimieren.
-*   **Schüler-Hausaufgaben:** Schülern erlauben, Hausaufgaben und Projektdateien direkt in spezifische Kursmodule hochzuladen.
-*   **CMS-Integration:** Überlegung zur Integration eines leichtgewichtigen Headless CMS (wie Strapi oder Contentful) oder Aufbau eines dedizierten DMS-Moduls zur Verwaltung von Dateiversionierung und Berechtigungen.
-
-### 5. 💬 Erweiterte Kursinteraktion
-*   **Kurskommentare/Ankündigungen:** Hinzufügen eines "Lehrer-Boards" zu jedem Kurs, auf dem Dozenten Updates, Details zum Tech-Stack (z. B. "Wir werden React 19 & Tailwind verwenden") oder kurzfristige Änderungen posten können.
-*   **Tech-Stack-Spezifikation:** Lehrern ermöglichen, die spezifischen Technologien zu definieren, die in einem Kursmodul verwendet werden (z. B. Versionsnummern, erforderliche Software), sichtbar in der Kursübersicht.
-
-### 6. 🛠️ Erweiterte Admin-Support-Tools
-*   **Impersonation-Modus:** Admins erlauben, das System "als" ein bestimmter Benutzer zu sehen, um Probleme genau so zu beheben, wie der Benutzer sie sieht.
-*   **Audit-Logs:** Implementierung einer detaillierten Protokollierung aller administrativen Aktionen (wer hat was wann geändert) für Sicherheit und Rechenschaftspflicht.
-*   **System-Health-Dashboard:** Visuelle Echtzeit-Metriken für Serverauslastung, Datenbankverbindungen und Fehlerraten.
-
----
-
-## 1. Technische Implementierung
-
-Dieses Projekt ist eine moderne Intranet-Anwendung, die mit **Next.js 15** erstellt wurde und den App Router sowie Server Actions für ein nahtloses Full-Stack-Erlebnis nutzt. Das System ist für rollenbasierte Zugriffskontrolle (RBAC) für Schüler, Lehrer, Mitarbeiter und Administratoren ausgelegt.
-
-### Kern-Stack
-*   **Framework:** [Next.js 15](https://nextjs.org/) (App Router, Server Components)
-*   **Sprache:** TypeScript
-*   **Datenbank:** PostgreSQL (via Prisma ORM)
-*   **Authentifizierung:** Benutzerdefinierte JWT-basierte Auth mit sicherer Cookie-Verarbeitung (stateless)
-*   **UI-Bibliothek:** [Tailwind CSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
-*   **Icons:** Lucide React
-
-### Schlüsselkonzepte
-*   **Server Actions:** Werden für alle Datenmutationen verwendet (Login, Benutzer erstellen, Anfragen senden). Dies eliminiert die Notwendigkeit einer separaten API-Schicht für interne Funktionen.
-*   **Middleware:** `middleware.ts` handhabt den Routenschutz und stellt sicher, dass Benutzer nur auf Seiten zugreifen können, die für ihre Rolle relevant sind (z. B. ist `/admin` für Schüler gesperrt).
-*   **Prisma ORM:** Bietet typsicheren Datenbankzugriff. Das Schema ist in `prisma/schema.prisma` definiert.
-
----
-
-## 2. Architektur
-
-### Datenbankschema (ER-Diagramm)
-
-```mermaid
-erDiagram
-    User ||--o{ TimeEntry : "protokolliert Zeit"
-    User ||--o{ BulletinPost : "erstellt"
-    User ||--o{ Inquiry : "reicht ein"
-    User ||--o{ Grade : "erhält"
-    User ||--o{ TeacherSkill : "hat"
-    User ||--o{ Notification : "empfängt"
-    User }|--|{ Course : "besucht (Schüler)"
-    User }|--|{ Course : "lehrt (Lehrer)"
-    Course ||--o{ Exam : "beinhaltet"
-    Course ||--o{ CourseTopic : "enthält Themen"
-    Course }o--|| Room : "findet statt in"
-    Course }o--|| EducationTrack : "gehört zu"
-    
-    User {
-        String id PK
-        String name
-        String email
-        String role "admin, student, staff, teacher"
-        String department "nullable"
-        String measureNumber "nullable"
-        DateTime createdAt
-    }
-
-    Course {
-        String id PK
-        String title
-        String description "nullable"
-        DateTime startDate
-        DateTime endDate
-        String roomId FK "neu"
-        String educationTrackId FK
-        DateTime createdAt
-    }
-    
-    Room {
-        String id PK "neu"
-        String name "neu"
-        Int capacity "neu"
-        DateTime createdAt "neu"
-    }
-    
-    CourseTopic {
-        String id PK "neu"
-        String title "neu"
-        Int durationUnits "UE, neu"
-        DateTime startDate "neu"
-        DateTime endDate "neu"
-        String courseId FK "neu"
-        DateTime createdAt "neu"
-    }
-    
-    Notification {
-        String id PK
-        String userId FK
-        String message
-        String link "nullable"
-        String type "INFO,INQUIRY,GRADE,INVITATION,WARNING"
-        Boolean isRead
-        DateTime createdAt
-    }
-
-    TimeEntry {
-        String id PK
-        String userId FK
-        DateTime clockIn
-        DateTime clockOut "nullable"
-        Int duration "nullable"
-        String location "ON_SITE, REMOTE"
-        DateTime createdAt
-    }
-
-    Announcement {
-        String id PK
-        String title
-        String content
-        String author
-        Boolean published
-        DateTime createdAt
-    }
-
-    CourseEvent {
-        String id PK
-        String title
-        String description "nullable"
-        DateTime startTime
-        DateTime endTime
-        String location "nullable"
-        String instructor "nullable"
-        DateTime createdAt
-    }
-
-    BulletinPost {
-        String id PK
-        String title
-        String description
-        String type "OFFER, SEARCH"
-        String contactInfo
-        String userId FK "nullable"
-        DateTime createdAt
-    }
-
-    Exam {
-        String id PK
-        String title
-        DateTime date
-        String content
-        String location
-        Int duration
-        String courseId FK "nullable"
-        DateTime createdAt
-    }
-
-    Inquiry {
-        String id PK
-        String userId FK
-        String subject
-        String message
-        String category "ADMIN, TEACHER"
-        String status "OPEN, ANSWERED"
-        String answer "nullable"
-        DateTime createdAt
-        DateTime answeredAt "nullable"
-    }
-
-    Grade {
-        String id PK
-        String userId FK
-        String subject
-        Float value
-        DateTime date
-    }
-
-    TeacherSkill {
-        String id PK
-        String userId FK
-        String subject
-        Boolean isActive
-    }
-```
-
-### Git & Deployment Workflow
-
-1.  **Entwicklung:** Features werden in lokalen Branches entwickelt.
-2.  **Prisma Migration:** Datenbankänderungen werden via `npx prisma migrate dev` angewendet.
-3.  **Build:** `npm run build` generiert das Produktions-Bundle.
-4.  **Start:** `npm start` startet den optimierten Produktionsserver.
-
----
-
-## 3. Kritische Evaluation
-
-### Code-Qualität & Architektur
-*   **Stärken:**
-    *   **Modular:** Komponenten sind gut getrennt (z. B. `sidebar.tsx`, `create-inquiry-dialog.tsx`).
-    *   **Typsicher:** TypeScript wird konsequent verwendet, was Laufzeitfehler reduziert.
-    *   **Sicher:** Server Actions handhaben automatisch CSRF-Schutz; Middleware erzwingt Auth-Regeln.
-*   **Schwächen:**
-    *   **Komplexität:** Einige Server Components vermischen Datenabruf und UI-Logik zu stark.
-    *   **State Management:** Starke Abhängigkeit von lokalem State (`useState`) in einigen komplexen Formularen könnte durch URL-State oder einen globalen Store verbessert werden, wenn die App wächst.
-
-### Engpässe & Technische Schulden
-*   **Datenbankabfragen:** Einige Dashboard-Ansichten könnten N+1-Abfrageprobleme auslösen (z. B. Abrufen von Schülern und dann deren Zeiteinträge einzeln).
-    *   *Lösung:* Optimierung von Prisma-Abfragen mit `include` oder Raw SQL für komplexe Berichte.
-*   **Rollen-Logik:** Rollenbasiertes Rendering erfolgt oft durch einfache `if`-Prüfungen in JSX.
-    *   *Lösung:* Abstraktion in `<RoleGuard role="admin">`-Komponenten wäre sauberer.
-
-### Vorgeschlagene Verbesserungen
-1.  **Refactoring:** Extrahieren komplexer Datenabrufe in dedizierte "Service"-Dateien (z. B. `lib/services/user-service.ts`).
-2.  **Performance:** Implementierung von React `Suspense` für langsam ladende Dashboard-Widgets.
-3.  **Testing:** Hinzufügen von E2E-Tests mit Playwright zur Überprüfung kritischer Abläufe wie "Login" und "Clock In".
-
----
-
-## 4. Learnings
-
-*   **Warum Server Actions?** Sie vereinfachen das mentale Modell, indem sie die Backend-Logik direkt neben der UI halten, die sie auslöst, was den Kontextwechsel reduziert.
-*   **Rollen verwalten:** Hardcodierte Rollen (`if role === 'admin'`) sind einfach für den Anfang, werden aber unübersichtlich. Ein robustes Berechtigungssystem (RBAC) wäre besser für die Skalierung.
-*   **Shadcn/UI:** Obwohl mächtig, erfordert es, den Code zu "besitzen". Das Anpassen von Komponenten erfordert mehr Aufwand als die Verwendung einer vorgefertigten Bibliothek wie Bootstrap, bietet aber viel mehr Kontrolle.
+**UI-Komponente:**
+- `CourseTopicsManager` – CRUD-UI mit Dialog, zeigt Gesamt-UE
+- Visual: Badge mit UE pro Thema, scrollbare Liste, Edit/Delete Buttons
