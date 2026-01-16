@@ -1,5 +1,176 @@
 # Schul-Portal-Demo - Technische Dokumentation
 
+## 🆕 Aktuelle Features (Januar 2026)
+
+### 1. 📍 Raum- und Standortverwaltung
+**Problem:** Kurse hatten keine physische Zuordnung zu Räumen oder Standorten.
+
+**Lösung:**
+- Neues `Room` Model mit Kapazität und Namen
+- `Course.roomId` Beziehung für direkte Raum-Zuweisung
+- Dropdown-Auswahl bei Kurserstellung und -bearbeitung
+- Demo-Räume: Raum 101, 102, 201, Remote/Online, Aula
+
+**Technische Umsetzung:**
+```prisma
+model Course {
+  roomId  String?
+  room    Room? @relation(fields: [roomId], references: [id])
+}
+
+model Room {
+  id       String   @id @default(cuid())
+  name     String
+  capacity Int      @default(30)
+  courses  Course[]
+}
+```
+
+### 2. 📚 Themengebiete-Management (Course Topics)
+**Problem:** Kurse waren monolithische Blöcke ohne strukturierte Untergliederung in Themen mit Zeitplanung.
+
+**Lösung:**
+- `CourseTopic` Model mit Titel, UE (Unterrichtseinheiten), Start- und Enddatum
+- Visuelle Komponente `CourseTopicsManager` mit CRUD-Funktionen
+- Anzeige der Gesamt-UE pro Kurs
+- Zeitliche Planung einzelner Themenblöcke
+
+**Mermaid Workflow:**
+```mermaid
+graph TD
+    A[Verwaltung öffnet Kurs] --> B[Klick auf Bearbeiten]
+    B --> C[Themengebiete-Sektion sichtbar]
+    C --> D[Thema hinzufügen Button]
+    D --> E[Dialog: Titel, UE, Zeitraum]
+    E --> F[Speichern]
+    F --> G[CourseTopic erstellt]
+    G --> H[Gesamt-UE aktualisiert]
+    H --> I[Revalidierung /planning]
+```
+
+**API Actions:**
+- `createCourseTopicAction()` - Neues Thema erstellen
+- `updateCourseTopicAction()` - Thema bearbeiten
+- `deleteCourseTopicAction()` - Thema löschen
+
+### 3. 🔄 Student-Zuweisung Fix
+**Problem:** Nach Zuweisung von Studenten zu Kursen war kein visuelles Feedback sichtbar, Studenten sahen Kurse nicht in ihrem Kalender.
+
+**Lösung:**
+- Dialog resettet `selectedStudentIds` beim Öffnen (fresh data)
+- Erweiterte Revalidierung: `/planning`, `/planning/course/{id}`, `/courses`, `/student`, `/dashboard`
+- Automatisches Schließen des Popovers nach Aktion
+- `router.refresh()` für sofortiges UI-Update
+
+**Datenfluss:**
+```mermaid
+sequenceDiagram
+    participant U as User (Staff)
+    participant D as Dialog
+    participant A as assignStudentsToCourse
+    participant DB as Database
+    participant R as Router
+
+    U->>D: Öffnet Student-Dialog
+    D->>D: Reset selectedStudentIds
+    U->>D: Wählt Studenten aus
+    U->>D: Klick Speichern
+    D->>A: assignStudentsToCourse(courseId, ids)
+    A->>DB: UPDATE Course SET students
+    A->>A: revalidatePath() x5
+    A-->>D: Success
+    D->>R: router.refresh()
+    D->>D: Dialog schließen
+    R->>U: UI aktualisiert
+```
+
+### 4. 🔔 Intelligentes Benachrichtigungssystem
+
+**Problem:** Alle Benachrichtigungen waren gleich, kein Verlauf, kein Auto-Dismiss.
+
+**Lösung:**
+
+#### 4.1 Notification Types
+- `INFO` - Allgemeine Informationen
+- `INQUIRY` - Anfragen (werden NICHT im Verlauf gespeichert)
+- `GRADE` - Noteneinträge (blauer Badge)
+- `INVITATION` - Kurseinladungen (grauer Badge)
+- `WARNING` - Warnungen, z.B. Post-Löschungen (roter Badge)
+
+#### 4.2 Auto-Dismiss beim Klick
+Wenn eine Notification mit Link angeklickt wird:
+1. Notification wird als gelesen markiert (`isRead = true`)
+2. Popover schließt sich automatisch
+3. Navigation zur verlinkten Seite
+4. `router.refresh()` aktualisiert UI
+
+**Code-Flow:**
+```typescript
+const handleNotificationClick = (notification) => {
+  if (notification.link) {
+    await markNotificationAsRead(notification.id);
+    setOpen(false);  // Popover schließen
+    router.push(notification.link);
+    router.refresh();
+  }
+}
+```
+
+#### 4.3 Verlauf-Tab
+- Separater Tab "Verlauf" neben "Neu"
+- Zeigt nur gelesene Notifications (außer INQUIRY-Typ)
+- Limitiert auf letzte 50 Einträge
+- Visuelle Unterscheidung: grau/transparent, kleinere Schrift
+
+**UI Struktur:**
+```mermaid
+graph LR
+    A[Benachrichtigungs-Icon] --> B{Popover}
+    B --> C[Tab: Neu]
+    B --> D[Tab: Verlauf]
+    C --> E[Ungelesene Notifications]
+    C --> F[Badge mit Typ]
+    C --> G[Klickbar zum Ziel]
+    D --> H[Gelesene Notifications]
+    D --> I[Ohne INQUIRY]
+    D --> J[Nur Anzeige]
+```
+
+### 5. 🗑️ Post-Löschung mit Kommentar
+
+**Problem:** Staff konnte Posts löschen, aber Autoren wussten nicht warum.
+
+**Lösung:**
+
+#### Workflow für Staff:
+```mermaid
+graph TD
+    A[Staff klickt Löschen-Button] --> B{Eigener Post?}
+    B -->|Ja| C[Einfacher Confirm-Dialog]
+    B -->|Nein| D[Dialog mit Kommentar-Feld]
+    C --> E[Post löschen]
+    D --> F[Grund eingeben Optional]
+    F --> G[Löschen & Benachrichtigen]
+    G --> H[deleteBulletinPost mit reason]
+    H --> I[Post aus DB entfernt]
+    H --> J[WARNING Notification an Autor]
+    J --> K[Autor sieht rote Benachrichtigung]
+```
+
+**Notification-Nachricht:**
+```
+"Dein Beitrag '[Titel]' wurde von der Verwaltung entfernt. 
+Grund: [Kommentar oder leer]"
+```
+
+**Technische Implementierung:**
+- `DeletePostButton` hat `needsReason` prop
+- Konditionaler Dialog vs. Confirm
+- `deleteBulletinPost(postId, deletionReason?)` 
+- Automatische WARNING-Notification mit Typ und rotem Badge
+
+---
+
 ## 🚀 Features für zukünftige Planung
 
 Die folgenden Funktionen und Verbesserungen sind für kommende Iterationen des Schul-Portal-Demo geplant. Diese zielen darauf ab, Skalierbarkeit, Benutzererfahrung und administrative Kontrolle zu verbessern.
@@ -66,15 +237,19 @@ erDiagram
     User ||--o{ Inquiry : "reicht ein"
     User ||--o{ Grade : "erhält"
     User ||--o{ TeacherSkill : "hat"
+    User ||--o{ Notification : "empfängt"
     User }|--|{ Course : "besucht (Schüler)"
     User }|--|{ Course : "lehrt (Lehrer)"
     Course ||--o{ Exam : "beinhaltet"
+    Course ||--o{ CourseTopic : "enthält Themen"
+    Course }o--|| Room : "findet statt in"
+    Course }o--|| EducationTrack : "gehört zu"
     
     User {
         String id PK
         String name
         String email
-        String role "admin, student, staff"
+        String role "admin, student, staff, teacher"
         String department "nullable"
         String measureNumber "nullable"
         DateTime createdAt
@@ -86,6 +261,35 @@ erDiagram
         String description "nullable"
         DateTime startDate
         DateTime endDate
+        String roomId FK "neu"
+        String educationTrackId FK
+        DateTime createdAt
+    }
+    
+    Room {
+        String id PK "neu"
+        String name "neu"
+        Int capacity "neu"
+        DateTime createdAt "neu"
+    }
+    
+    CourseTopic {
+        String id PK "neu"
+        String title "neu"
+        Int durationUnits "UE, neu"
+        DateTime startDate "neu"
+        DateTime endDate "neu"
+        String courseId FK "neu"
+        DateTime createdAt "neu"
+    }
+    
+    Notification {
+        String id PK
+        String userId FK
+        String message
+        String link "nullable"
+        String type "INFO,INQUIRY,GRADE,INVITATION,WARNING"
+        Boolean isRead
         DateTime createdAt
     }
 

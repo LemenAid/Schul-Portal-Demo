@@ -1240,7 +1240,17 @@ export async function markNotificationAsRead(notificationId: string) {
         where: { id: notificationId },
         data: { isRead: true }
     });
+    
+    // Revalidate all paths that show notifications
     revalidatePath('/');
+    revalidatePath('/dashboard');
+    revalidatePath('/student');
+    revalidatePath('/profile');
+    revalidatePath('/courses');
+    revalidatePath('/planning');
+    revalidatePath('/bulletin');
+    revalidatePath('/inquiries');
+    revalidatePath('/exams');
 }
 
 

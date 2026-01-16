@@ -6,9 +6,17 @@ Eine umfassende Intranet-Lösung für Bildungseinrichtungen zur Verwaltung von S
 
 *   **Rollenbasierte Dashboards:** Maßgeschneiderte Ansichten für Schüler, Lehrer, Mitarbeiter und Administratoren.
 *   **Zeiterfassung:** Rechtskonformes Check-in/Check-out-System für Schüler.
-*   **Kurs- & Prüfungsverwaltung:** Planung von Stundenplänen, Benotung und Lehrplänen.
-*   **Schwarzes Brett:** "Suche/Biete"-Marktplatz mit automatischer Ablaufsteuerung für Beiträge.
+*   **Kurs- & Prüfungsverwaltung:** 
+    *   Vollständige Kursverwaltung mit Raum-Zuweisung
+    *   Themengebiete mit Unterrichtseinheiten (UE) und Zeiträumen
+    *   Automatische Studenten-Zuweisung mit Echtzeit-Refresh
+    *   Planung von Stundenplänen, Benotung und Lehrplänen
+*   **Schwarzes Brett:** "Suche/Biete"-Marktplatz mit Moderationsfunktion und automatischen Warnungen bei Löschungen.
 *   **Anfrage-System:** Direkter Kommunikationskanal zwischen Schülern und Abteilungen.
+*   **Intelligentes Benachrichtigungssystem:**
+    *   Kategorisierte Notifications (Anfragen, Noten, Einladungen, Warnungen)
+    *   Automatisches Markieren als gelesen beim Klick
+    *   Verlauf-Tab für vergangene Benachrichtigungen
 
 ## 🚀 Erste Schritte
 
@@ -45,6 +53,14 @@ Eine umfassende Intranet-Lösung für Bildungseinrichtungen zur Verwaltung von S
 ### 3. Server Actions & "Plain Object" Fehler
 *   **Problem:** Sie versuchen, ein komplexes Objekt (wie ein Date-Objekt oder eine Klasseninstanz) von einer Server Component an eine Client Component zu übergeben.
 *   **Lösung:** Übergeben Sie nur einfache JSON-serialisierbare Daten (Strings, Zahlen, Booleans, einfache Objekte). Konvertieren Sie Daten (Dates) in ISO-Strings, bevor Sie sie übergeben.
+
+### 4. Studenten erscheinen nicht in Kursliste
+*   **Problem:** Nach Zuweisung von Studenten zu einem Kurs werden sie nicht in der Liste angezeigt.
+*   **Lösung:** Das System führt jetzt automatisch einen Refresh durch. Falls das Problem weiterhin besteht, überprüfen Sie die Browser-Console auf Fehler und stellen Sie sicher, dass `router.refresh()` nach der Zuweisung aufgerufen wird.
+
+### 5. Benachrichtigungen verschwinden nicht
+*   **Problem:** Benachrichtigungen bleiben nach dem Klicken sichtbar.
+*   **Lösung:** Stellen Sie sicher, dass die Notification-Links korrekt sind. Das System markiert Notifications automatisch als gelesen, wenn sie angeklickt werden.
 
 ## 🤖 KI-Prompting-Leitfaden
 

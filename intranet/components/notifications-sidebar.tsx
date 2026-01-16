@@ -34,21 +34,32 @@ export function NotificationsSidebarClient({
     const router = useRouter();
     const [open, setOpen] = useState(false);
 
-    const handleNotificationClick = (notification: Notification) => {
-        // Mark as read and navigate
+    const handleNotificationClick = async (notification: Notification) => {
+        // Mark as read FIRST, then navigate
         if (notification.link) {
-            startTransition(async () => {
+            try {
+                // Wait for the notification to be marked as read
                 await markNotificationAsRead(notification.id);
-                setOpen(false); // Close popover
-                router.push(notification.link!);
+                
+                // Close popover
+                setOpen(false);
+                
+                // Navigate to the link
+                router.push(notification.link);
+                
+                // Force refresh to update UI
                 router.refresh();
-            });
+            } catch (error) {
+                console.error("Failed to mark notification as read:", error);
+            }
         } else {
             // Just mark as read if no link
-            startTransition(async () => {
+            try {
                 await markNotificationAsRead(notification.id);
                 router.refresh();
-            });
+            } catch (error) {
+                console.error("Failed to mark notification as read:", error);
+            }
         }
     };
 

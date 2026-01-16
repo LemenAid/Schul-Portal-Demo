@@ -13,7 +13,10 @@
 **Part 2: The Organizer (Staff)**
 "Next, we switch to the Staff role – our organizational backbone.
 *   **Education Tracks:** Staff members define the academic calendar. Here we create a new 'Fachinformatiker 2024' track.
-*   **Course Planning:** Within that track, we schedule specific courses like 'Web Development', assigning them to rooms and time slots."
+*   **Course Planning:** Within that track, we schedule specific courses like 'Web Development', assigning them to rooms and time slots.
+*   **Room Management:** NEW! We can now assign each course a physical room - e.g. 'Room 101' or 'Remote/Online'.
+*   **Course Topics:** NEW! When editing a course, we see a structured list of topics with their teaching units (UE) and time periods. Perfect for detailed planning.
+*   **Student Assignment:** With just a few clicks, we assign students to courses. The system immediately updates all views - students see the course directly in their dashboard."
 
 **Part 3: The Educator (Teacher)**
 "Now, let's see the Teacher's perspective.
@@ -24,6 +27,8 @@
 **Part 4: The Learner (Student)**
 "Finally, the Student view – the most used interface.
 *   **Dashboard:** Upon login, the student sees their upcoming schedule and announcements.
+*   **Notifications:** NEW! An intelligent system with color-coded badges. Grades appear in blue, warnings in red, invitations in gray. One click on a notification marks it as read and forwards to the destination.
+*   **Notification History:** NEW! In the history tab, students can view all past important messages (grades, invitations) - without inquiry spam cluttering the history.
 *   **Time Tracking:** A vital compliance feature. The student clicks 'Clock In' to start their day, logging their attendance for the employment agency.
 *   **Inquiries:** If a student has a problem, they don't send a loose email. They use the 'New Inquiry' button to send a structured ticket directly to the relevant department."
 

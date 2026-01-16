@@ -48,7 +48,7 @@ export default async function BulletinPage() {
                         <span className="text-xs text-gray-400">
                             {post.createdAt.toLocaleDateString()}
                         </span>
-                        {canDelete && <DeletePostButton postId={post.id} authorId={post.userId} needsReason={needsReason} />}
+                        {canDelete && post.userId && <DeletePostButton postId={post.id} authorId={post.userId} needsReason={needsReason} />}
                     </div>
                   </div>
                   <CardTitle className="mt-2 text-lg">{post.title}</CardTitle>

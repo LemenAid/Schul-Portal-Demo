@@ -83,22 +83,31 @@ export function DeletePostButton({ postId, authorId, needsReason }: { postId: st
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="reason">Grund für die Löschung (Optional)</Label>
+                        <Label htmlFor="reason">Grund für die Löschung <span className="text-red-500">*</span></Label>
                         <Textarea 
                             id="reason" 
                             placeholder="z.B. Verstößt gegen Community-Richtlinien..."
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
                             rows={4}
+                            required
+                            className={reason.trim().length === 0 ? "border-red-300" : ""}
                         />
+                        {reason.trim().length === 0 && (
+                            <p className="text-xs text-red-500">Ein Löschungsgrund ist erforderlich</p>
+                        )}
                     </div>
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setOpen(false)}>
                         Abbrechen
                     </Button>
-                    <Button variant="destructive" onClick={handleConfirmDelete} disabled={isPending}>
-                        {isPending ? "Löscht..." : "Löschen & Benachrichtigen"}
+                    <Button 
+                        variant="destructive" 
+                        onClick={handleConfirmDelete} 
+                        disabled={isPending || reason.trim().length === 0}
+                    >
+                        {isPending ? "Löscht..." : "Ja, definitiv löschen"}
                     </Button>
                 </DialogFooter>
             </DialogContent>
