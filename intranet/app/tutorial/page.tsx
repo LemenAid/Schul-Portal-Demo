@@ -1,7 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, BookOpen, UserCircle, Settings, Shield, Clock, GraduationCap, LayoutDashboard, Database, HelpCircle } from "lucide-react";
+import { CheckCircle2, BookOpen, UserCircle, Settings, Shield, Clock, GraduationCap, LayoutDashboard, Database, HelpCircle, BookCheck, MessageSquare } from "lucide-react";
 
 export default async function TutorialPage() {
   const user = await getCurrentUser();
