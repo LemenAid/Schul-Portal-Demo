@@ -162,17 +162,14 @@ export async function Sidebar() {
               History
             </Button>
           </Link>
-          <div className="px-3 pb-2">
-             <CreateInquiryDialog variant="sidebar" />
-          </div>
         </nav>
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
             <ModeToggle />
-            <Link href="/tutorial" className="flex-1">
-                <Button variant="ghost" className="w-full justify-start gap-2 text-current hover:bg-white/20">
+            <Link href="/tutorial">
+                <Button variant="ghost" className="gap-2 text-current hover:bg-white/20">
                     <BookOpen size={20} />
                     Tutorial
                 </Button>

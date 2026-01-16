@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { createNotification } from "@/lib/actions";
 
 // --- Schüler-Management ---
 
@@ -125,6 +126,16 @@ export async function createCourseTopicAction(formData: FormData) {
     const startDate = new Date(formData.get("startDate") as string);
     const endDate = new Date(formData.get("endDate") as string);
 
+    // Get course participants for notifications
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      include: {
+        students: true,
+        teachers: true
+      }
+    });
+    if (!course) throw new Error("Course not found");
+
     await prisma.courseTopic.create({
       data: {
         courseId,
@@ -134,9 +145,21 @@ export async function createCourseTopicAction(formData: FormData) {
         endDate
       }
     });
+
+    // Notify all participants
+    const message = `Neues Themengebiet im Kurs "${course.title}": ${title} (${durationUnits} UE)`;
+    for (const student of course.students) {
+      await createNotification(student.id, message, '/courses', 'INFO');
+    }
+    for (const teacher of course.teachers) {
+      if (teacher.id !== user.id) {
+        await createNotification(teacher.id, message, '/teacher/courses', 'INFO');
+      }
+    }
   
     revalidatePath("/planning");
     revalidatePath(`/planning/course/${courseId}`);
+    revalidatePath('/courses');
   }
 
 export async function updateCourseTopicAction(formData: FormData) {
@@ -152,6 +175,16 @@ export async function updateCourseTopicAction(formData: FormData) {
     const startDate = new Date(formData.get("startDate") as string);
     const endDate = new Date(formData.get("endDate") as string);
 
+    // Get course participants for notifications
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      include: {
+        students: true,
+        teachers: true
+      }
+    });
+    if (!course) throw new Error("Course not found");
+
     await prisma.courseTopic.update({
       where: { id: topicId },
       data: {
@@ -161,9 +194,21 @@ export async function updateCourseTopicAction(formData: FormData) {
         endDate
       }
     });
+
+    // Notify all participants
+    const message = `Themengebiet "${title}" im Kurs "${course.title}" wurde aktualisiert`;
+    for (const student of course.students) {
+      await createNotification(student.id, message, '/courses', 'INFO');
+    }
+    for (const teacher of course.teachers) {
+      if (teacher.id !== user.id) {
+        await createNotification(teacher.id, message, '/teacher/courses', 'INFO');
+      }
+    }
   
     revalidatePath("/planning");
     revalidatePath(`/planning/course/${courseId}`);
+    revalidatePath('/courses');
   }
 
 export async function deleteCourseTopicAction(topicId: string, courseId: string) {

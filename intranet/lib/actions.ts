@@ -1086,6 +1086,36 @@ export async function updateCourse(formData: FormData) {
     const tagIds = formData.getAll('tags') as string[];
     const roomId = formData.get('roomId') as string;
 
+    // Get current course state for comparison
+    const currentCourse = await prisma.course.findUnique({
+        where: { id: courseId },
+        include: {
+            teachers: true,
+            students: true,
+            room: true,
+            topics: true
+        }
+    });
+    if (!currentCourse) throw new Error("Course not found");
+
+    // Track changes for notifications
+    const changes: string[] = [];
+    
+    // Check room change
+    if (roomId && roomId !== 'none' && roomId !== currentCourse.roomId) {
+        const newRoom = await prisma.room.findUnique({ where: { id: roomId } });
+        changes.push(`Raum wurde geändert: ${newRoom?.name}`);
+    } else if ((!roomId || roomId === 'none') && currentCourse.roomId) {
+        changes.push('Raum wurde entfernt');
+    }
+
+    // Check teacher change
+    const currentTeacherId = currentCourse.teachers[0]?.id;
+    if (teacherId && teacherId !== currentTeacherId) {
+        const newTeacher = await prisma.user.findUnique({ where: { id: teacherId } });
+        changes.push(`Dozent wurde geändert: ${newTeacher?.name}`);
+    }
+
     // Build update data
     const data: Prisma.CourseUpdateInput = {
         title,
@@ -1096,30 +1126,15 @@ export async function updateCourse(formData: FormData) {
         room: roomId && roomId !== 'none' ? { connect: { id: roomId } } : { disconnect: true },
     };
 
-    // Only update relations if they are provided/changed (simple check)
-    // For now, if teacherId is provided, we CONNECT it. 
-    // Handling "disconnect" in a simple form is tricky without more UI state.
-    // We'll reset teachers if a new one is picked.
     if (teacherId) {
         data.teachers = {
-            set: [], // Clear existing
+            set: [],
             connect: { id: teacherId }
         };
     }
     
-    // Same for tags
     if (tagIds.length > 0) {
-        // First delete existing tags relations? 
-        // Prisma update with 'set' on m:n via explicit table is tricky.
-        // Easier strategy: Delete all CourseTags for this course, then create new ones.
-        // But here we might just ADD for now or use the 'tags' relation directly if implicit.
-        // Looking at schema would help, but let's assume standard relation update.
-        // Since we use `tags: { create: ... }` in create, it seems we have an explicit join table `CourseTag`.
-        // So we can't just use `set`. We should probably deleteMany first.
-        // Let's do a transaction or just simple updates.
-        
         await prisma.courseTag.deleteMany({ where: { courseId } });
-        
         data.tags = {
              create: tagIds.map(tagId => ({
                 tag: { connect: { id: tagId } }
@@ -1132,7 +1147,36 @@ export async function updateCourse(formData: FormData) {
         data
     });
 
+    // Send notifications to all participants if changes occurred
+    if (changes.length > 0) {
+        const changeMessage = `Kurs "${currentCourse.title}" wurde aktualisiert:\n${changes.join('\n')}`;
+        
+        // Notify all students
+        for (const student of currentCourse.students) {
+            await createNotification(
+                student.id,
+                changeMessage,
+                `/courses`,
+                'INFO'
+            );
+        }
+        
+        // Notify all teachers (except the one making the change)
+        for (const teacher of currentCourse.teachers) {
+            if (teacher.id !== user.id) {
+                await createNotification(
+                    teacher.id,
+                    changeMessage,
+                    `/teacher/courses`,
+                    'INFO'
+                );
+            }
+        }
+    }
+
     revalidatePath('/planning');
+    revalidatePath(`/planning/course/${courseId}`);
+    revalidatePath('/courses');
 }
 
 export async function deleteCourse(courseId: string) {

@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MessageSquare, Bell } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { CreateInquiryDialog } from "./create-inquiry-dialog";
 
 export default async function InquiriesPage() {
   const user = await getCurrentUser();
@@ -22,13 +23,18 @@ export default async function InquiriesPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          History
-        </h1>
-        <p className="text-gray-500">
-          Historie aller beantworteten Anfragen.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            History
+          </h1>
+          <p className="text-gray-500">
+            Historie aller beantworteten Anfragen.
+          </p>
+        </div>
+        {!isStaff && (
+          <CreateInquiryDialog />
+        )}
       </div>
 
       <Tabs defaultValue="inquiries" className="w-full">
