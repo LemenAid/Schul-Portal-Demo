@@ -102,7 +102,8 @@ export async function deleteBulletinPost(postId: string, deletionReason?: string
     
     await prisma.bulletinPost.delete({ where: { id: postId } });
     
-    if (deletedByStaff) {
+    // Send WARNING notification if deleted by staff and post has an author
+    if (deletedByStaff && post.userId) {
         const message = deletionReason 
             ? `Dein Beitrag "${post.title}" wurde von der Verwaltung entfernt. Grund: ${deletionReason}`
             : `Dein Beitrag "${post.title}" wurde von der Verwaltung entfernt.`;
