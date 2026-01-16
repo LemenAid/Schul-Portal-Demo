@@ -498,6 +498,12 @@ export async function getAllTags() {
     });
 }
 
+export async function getAllRooms() {
+    return prisma.room.findMany({
+        orderBy: { name: 'asc' }
+    });
+}
+
 export async function toggleTeacherSkill(tagId: string) {
     const user = await getCurrentUser();
     // Nur Lehrer dürfen Skills bearbeiten
@@ -636,6 +642,11 @@ export async function getAllCourses() {
                     tag: true
                 }
             },
+            topics: {
+                orderBy: { startDate: 'asc' }
+            },
+            room: true,
+            students: true,
             _count: {
                 select: { students: true }
             }
@@ -1056,6 +1067,7 @@ export async function updateCourse(formData: FormData) {
     const educationTrackId = formData.get('educationTrackId') as string;
     const teacherId = formData.get('teacherId') as string;
     const tagIds = formData.getAll('tags') as string[];
+    const roomId = formData.get('roomId') as string;
 
     // Build update data
     const data: Prisma.CourseUpdateInput = {
@@ -1064,6 +1076,7 @@ export async function updateCourse(formData: FormData) {
         startDate,
         endDate,
         educationTrack: educationTrackId !== 'none' ? { connect: { id: educationTrackId } } : { disconnect: true },
+        room: roomId && roomId !== 'none' ? { connect: { id: roomId } } : { disconnect: true },
     };
 
     // Only update relations if they are provided/changed (simple check)
@@ -1154,7 +1167,12 @@ export async function assignStudentsToCourse(courseId: string, studentIds: strin
         }
     });
 
+    // Revalidate all affected pages
     revalidatePath('/planning');
+    revalidatePath(`/planning/course/${courseId}`);
+    revalidatePath('/courses');
+    revalidatePath('/student');
+    revalidatePath('/dashboard');
 }
 
 export async function removeStudentFromCourse(courseId: string, studentId: string) {

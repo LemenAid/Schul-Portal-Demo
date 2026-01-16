@@ -65,6 +65,10 @@ model Course {
   educationTrackId String?
   educationTrack   EducationTrack? @relation(fields: [educationTrackId], references: [id])
 
+  // Raum/Standort
+  roomId      String?
+  room        Room?    @relation(fields: [roomId], references: [id])
+
   // Begrenzung
   maxStudents Int @default(25)
 
@@ -116,6 +120,7 @@ model Room {
   capacity  Int      @default(30)
   
   events    CourseEvent[]
+  courses   Course[]  // Kurse die in diesem Raum stattfinden
   
   createdAt DateTime @default(now())
 }

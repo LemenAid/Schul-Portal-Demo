@@ -1,4 +1,4 @@
-import { getEducationTracks, createCourse, getAllCourses, createEducationTrack, getAllStudents } from "@/lib/actions";
+import { getEducationTracks, createCourse, getAllCourses, createEducationTrack, getAllStudents, getAllRooms } from "@/lib/actions";
 import { getCurrentUser } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,7 @@ export default async function PlanningPage() {
     const allTags = await getAllTags();
     const allCourses = await getAllCourses(); // Fetch all courses
     const availableStudents = await getAllStudents(); // Fetch all students, not just those without track
+    const allRooms = await getAllRooms(); // Fetch all rooms
 
     return (
       <TeacherSelectionProvider>
@@ -191,6 +192,23 @@ export default async function PlanningPage() {
                                         </Select>
                                     </div>
 
+                                    <div className="space-y-2">
+                                        <Label htmlFor="roomId">Raum / Standort</Label>
+                                        <Select name="roomId">
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Wähle einen Raum (Optional)" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="none">Kein Raum zugewiesen</SelectItem>
+                                                {allRooms.map((room) => (
+                                                    <SelectItem key={room.id} value={room.id}>
+                                                        {room.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
                                     <div className="space-y-4 border p-4 rounded-md bg-slate-50">
                                         <h3 className="font-medium text-sm">Qualifikationen & Dozenten</h3>
                                         <p className="text-xs text-gray-500">Wählen Sie Tags für den Kurs, um qualifizierte Dozenten zu finden.</p>
@@ -270,6 +288,7 @@ export default async function PlanningPage() {
                                             tracks={tracks} 
                                             allTags={allTags}
                                             availableStudents={availableStudents}
+                                            allRooms={allRooms}
                                         />
                                     </div>
                                 </Card>

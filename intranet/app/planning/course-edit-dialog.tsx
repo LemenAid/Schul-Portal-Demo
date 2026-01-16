@@ -40,6 +40,14 @@ type Teacher = {
     teacherSkills?: TeacherSkill[];
 };
 
+type CourseTopic = {
+    id: string;
+    title: string;
+    durationUnits: number;
+    startDate: string | Date;
+    endDate: string | Date;
+};
+
 type Course = {
     id: string;
     title: string;
@@ -49,6 +57,7 @@ type Course = {
     educationTrackId: string | null;
     tags: CourseTag[];
     teachers: Teacher[];
+    topics?: CourseTopic[];
 };
 
 type Track = {
@@ -137,15 +146,22 @@ function ActionButtons({ courseId, assignedTeacherId }: { courseId: string, assi
 }
 
 import { AssignStudentsToCourseDialog } from "./assign-course-students-dialog";
+import { CourseTopicsManager } from "./course-topics-manager";
+
+type Room = {
+    id: string;
+    name: string;
+};
 
 type CourseEditDialogProps = {
-    course: Course & { students?: { id: string, name: string, email: string }[] }; 
+    course: Course & { students?: { id: string, name: string, email: string }[], roomId?: string | null }; 
     tracks: Track[];
     allTags: Tag[];
     availableStudents: { id: string, name: string, email: string }[];
+    allRooms: Room[];
 };
 
-export function CourseEditDialog({ course, tracks, allTags, availableStudents }: CourseEditDialogProps) {
+export function CourseEditDialog({ course, tracks, allTags, availableStudents, allRooms }: CourseEditDialogProps) {
     const [isOpen, setIsOpen] = useState(false);
     const initialTeacher = course.teachers[0];
 
@@ -211,6 +227,23 @@ export function CourseEditDialog({ course, tracks, allTags, availableStudents }:
                             </Select>
                         </div>
 
+                        <div className="space-y-2">
+                            <Label htmlFor="roomId">Raum / Standort</Label>
+                            <Select name="roomId" defaultValue={course.roomId || "none"}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Wähle einen Raum (Optional)" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">Kein Raum zugewiesen</SelectItem>
+                                    {allRooms.map((room) => (
+                                        <SelectItem key={room.id} value={room.id}>
+                                            {room.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
                         <div className="space-y-4 border p-4 rounded-md bg-slate-50">
                             <h3 className="font-medium text-sm">Qualifikationen & Dozenten</h3>
                             <p className="text-xs text-gray-500">Wählen Sie Tags für den Kurs, um qualifizierte Dozenten zu finden.</p>
@@ -220,6 +253,13 @@ export function CourseEditDialog({ course, tracks, allTags, availableStudents }:
                             
                             <InvitationList courseId={course.id} />
                         </div>
+
+                        {/* Course Topics (Themengebiete) Section */}
+                        <CourseTopicsManager 
+                            courseId={course.id}
+                            courseTitle={course.title}
+                            topics={course.topics || []}
+                        />
 
                         {/* NEW: Student Assignment Section */}
                         <div className="space-y-4 border p-4 rounded-md bg-slate-50 mt-4">

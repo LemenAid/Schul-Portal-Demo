@@ -33,6 +33,15 @@ export function AssignStudentsToCourseDialog({ courseId, courseTitle, availableS
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
 
+    // Reset selection when dialog opens to ensure fresh data
+    const handleOpenChange = (isOpen: boolean) => {
+        setOpen(isOpen);
+        if (isOpen) {
+            setSelectedStudentIds(currentStudentIds);
+            setSearchTerm("");
+        }
+    };
+
     const filteredStudents = availableStudents.filter(student => 
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
         student.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -71,7 +80,7 @@ export function AssignStudentsToCourseDialog({ courseId, courseTitle, availableS
     };
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="w-full">
                     Schüler verwalten

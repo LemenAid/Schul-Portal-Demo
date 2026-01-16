@@ -90,6 +90,7 @@ export async function createCourseAction(formData: FormData) {
   
 
     const trackId = formData.get("trackId") as string;
+    const roomId = formData.get("roomId") as string;
 
     await prisma.course.create({
       data: {
@@ -97,7 +98,8 @@ export async function createCourseAction(formData: FormData) {
         description,
         startDate,
         endDate,
-        educationTrackId: trackId || null
+        educationTrackId: trackId || null,
+        roomId: roomId && roomId !== "none" ? roomId : null
       }
     });
   
@@ -107,4 +109,73 @@ export async function createCourseAction(formData: FormData) {
     } else {
         redirect("/planning");
     }
+  }
+
+// --- Course Topics (Themengebiete) Management ---
+
+export async function createCourseTopicAction(formData: FormData) {
+    const user = await getCurrentUser();
+    if (!user || (user.role !== "staff" && user.role !== "admin")) {
+      throw new Error("Unauthorized");
+    }
+  
+    const courseId = formData.get("courseId") as string;
+    const title = formData.get("title") as string;
+    const durationUnits = parseInt(formData.get("durationUnits") as string);
+    const startDate = new Date(formData.get("startDate") as string);
+    const endDate = new Date(formData.get("endDate") as string);
+
+    await prisma.courseTopic.create({
+      data: {
+        courseId,
+        title,
+        durationUnits,
+        startDate,
+        endDate
+      }
+    });
+  
+    revalidatePath("/planning");
+    revalidatePath(`/planning/course/${courseId}`);
+  }
+
+export async function updateCourseTopicAction(formData: FormData) {
+    const user = await getCurrentUser();
+    if (!user || (user.role !== "staff" && user.role !== "admin")) {
+      throw new Error("Unauthorized");
+    }
+  
+    const topicId = formData.get("topicId") as string;
+    const courseId = formData.get("courseId") as string;
+    const title = formData.get("title") as string;
+    const durationUnits = parseInt(formData.get("durationUnits") as string);
+    const startDate = new Date(formData.get("startDate") as string);
+    const endDate = new Date(formData.get("endDate") as string);
+
+    await prisma.courseTopic.update({
+      where: { id: topicId },
+      data: {
+        title,
+        durationUnits,
+        startDate,
+        endDate
+      }
+    });
+  
+    revalidatePath("/planning");
+    revalidatePath(`/planning/course/${courseId}`);
+  }
+
+export async function deleteCourseTopicAction(topicId: string, courseId: string) {
+    const user = await getCurrentUser();
+    if (!user || (user.role !== "staff" && user.role !== "admin")) {
+      throw new Error("Unauthorized");
+    }
+
+    await prisma.courseTopic.delete({
+      where: { id: topicId }
+    });
+    
+    revalidatePath("/planning");
+    revalidatePath(`/planning/course/${courseId}`);
   }
