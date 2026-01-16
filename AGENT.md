@@ -56,3 +56,13 @@ This document outlines the immediate next steps to finalize the Intranet project
         2. Click "Zeiterfassung" in Sidebar.
         3. Click green "Clock In" button.
         4. Verify "Active" status appears.
+
+## Project Structure & Deployment
+- **Root Directory:** The application logic lives in `intranet/`. When deploying (e.g., to Vercel), the **Root Directory** must be set to `intranet`.
+- **Database:** Uses Prisma with PostgreSQL.
+  - **Connection:** Requires `DATABASE_URL` in environment variables.
+  - **Seeding:** Use [`intranet/seed_winter2025.js`](intranet/seed_winter2025.js) to populate initial data. Run with `node seed_winter2025.js` inside the intranet folder.
+- **Build Process:**
+  - `node_modules` are not tracked in git.
+  - The `postinstall` script in [`intranet/package.json`](intranet/package.json) handles `prisma generate` automatically.
+  - Required Environment Variables: `DATABASE_URL`, `JWT_SECRET`.
